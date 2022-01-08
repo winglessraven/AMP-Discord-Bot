@@ -358,7 +358,7 @@ namespace DiscordBotPlugin
                         if (application.State == ApplicationState.Ready)
                         {
                             TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
-                            embed.AddField("Uptime", new DateTime(uptime.Ticks).ToString("dd:HH:mm:ss"), true);
+                            embed.AddField("Uptime", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}",uptime.Days,uptime.Hours,uptime.Minutes,uptime.Seconds), true);
                         }
 
                         if (_settings.MainSettings.ValidPlayerCount)
