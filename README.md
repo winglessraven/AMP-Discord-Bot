@@ -25,7 +25,7 @@ Before the plugin can be used you need to configure AMP in a specific way.
 ### Installing and Enabling the Plugin
 * Edit the AMPConfig.conf file in the root folder of your instance (e.g. `/home/amp/.ampdata/instances/INSTANCENAME01/AMPConfig.conf`)
 * Under AMP.LoadPlugins add `DiscordBotPlugin` to the list (e.g. `AMP.LoadPlugins=["FileManagerPlugin","EmailSenderPlugin","WebRequestPlugin","LocalFileBackupPlugin","CommonCorePlugin","DiscordBotPlugin"]`)
-* In the plugins folder for your instance (e.g. `/home/amp/.ampdata/instances/INSTANCENAME01/Plugins/`) create a new folder called `DiscordBotPlugin` and insert the .dll file from the current [release](https://github.com/winglessraven/AMP-Discord-Bot-Plugin/releases/latest "release")
+* In the plugins folder for your instance (e.g. `/home/amp/.ampdata/instances/INSTANCENAME01/Plugins/`) create a new folder called `DiscordBotPlugin` and insert the .dll file from the current [release](https://github.com/winglessraven/AMP-Discord-Bot/releases/latest "release")
 * Restart your instance with `ampinstmgr restart [INSTANCE NAME]`
 * Log in to your instance and you will see a new menu item under Configuration for the Discord Bot
 ![Menu Item](https://images2.imgbox.com/1f/1f/VHRYDACX_o.png "Menu Item")
