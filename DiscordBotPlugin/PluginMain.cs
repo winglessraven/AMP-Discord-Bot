@@ -141,9 +141,22 @@ namespace DiscordBotPlugin
             //is bot mentioned?
             if (msg.HasMentionPrefix(_client.CurrentUser, ref pos))
             {
+                _client.PurgeUserCache(); //try to clear cache so we can get the latest roles
                 if (context.User is SocketGuildUser user)
                     //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
                     hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+                //help command
+                if (msg.Content.ToLower().Contains("help"))
+                    await ShowHelp(msg);
+
+                //info command
+                if (msg.Content.ToLower().Contains("info"))
+                    await GetServerInfo(msg);
+
+                //following commands require permission so don't bother checking for matches if not allowed
+                if (!hasServerPermission)
+                    return;
 
                 //restart server command
                 if (msg.Content.ToLower().Contains("restart server") && hasServerPermission)
@@ -164,10 +177,6 @@ namespace DiscordBotPlugin
                 //kill server command
                 if (msg.Content.ToLower().Contains("kill server") && hasServerPermission)
                     await KillServer(msg);
-
-                //info command
-                if (msg.Content.ToLower().Contains("info"))
-                    await GetServerInfo(msg);
             }
         }
 
@@ -394,6 +403,31 @@ namespace DiscordBotPlugin
                 embed.AddField("Server Mod Pack", _settings.MainSettings.ModpackURL, false);
             }
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
+
+            //post bot reply
+            await msg.ReplyAsync(embed: embed.Build());
+        }
+
+        private async Task ShowHelp(SocketUserMessage msg)
+        {
+            //bot reaction
+            await msg.AddReactionAsync(emoji);
+
+            //build bot response
+            var embed = new EmbedBuilder
+            {
+                Title = "Bot Help",
+                Color = Color.LightGrey,
+                ThumbnailUrl = "https://freesvg.org/img/1527172379.png"
+            };
+
+            embed.AddField("Bot Commands", "`@" + _client.CurrentUser.Username + " info` - Show server info" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " start server` - Start the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " stop server` - Stop the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " restart server` - Restart the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " kill server` - Kill the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " update server` - Update the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " help` - Show this message" + Environment.NewLine);
 
             //post bot reply
             await msg.ReplyAsync(embed: embed.Build());
