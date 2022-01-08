@@ -34,7 +34,7 @@ namespace DiscordBotPlugin
             [WebSetting("Bot Activated", "(turn the bot on and off)", false)]
             public bool BotActive = false;
 
-            [WebSetting("Restrict Functions to Discord Role", "(restric server fuctions (start/stop/restart/kill) to Discord Role)", false)]
+            [WebSetting("Restrict Functions to Discord Role", "(restric server fuctions (start/stop/restart/kill/update) to Discord Role)", false)]
             public bool RestrictFunctions = false;
 
             [WebSetting("Discord Role Name", "(name of the role in your Discord server that should be allowed to excecute server starts/stops)", false)]
