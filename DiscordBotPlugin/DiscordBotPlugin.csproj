@@ -150,8 +150,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="DEVELOPER_README.txt" />
-    <Content Include="WebRoot\Plugin.js" />
-    <Content Include="WebRoot\SampleTab.html" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
