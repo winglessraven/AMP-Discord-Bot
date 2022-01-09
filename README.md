@@ -5,6 +5,8 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
+**Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki)**
+
 ![Bot Info Example](https://images2.imgbox.com/47/7f/T8HcWlrZ_o.png "Bot Info Example")
 
 # Command Reference
