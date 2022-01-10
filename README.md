@@ -7,7 +7,7 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 
 **Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki)**
 
-![Bot Info Example](https://images2.imgbox.com/47/7f/T8HcWlrZ_o.png "Bot Info Example")
+![Bot Info Example](https://images2.imgbox.com/37/10/4S8bHfl0_o.png "Bot Info Example")
 
 # Command Reference
 | Command | Description                    |
@@ -49,7 +49,7 @@ Before the plugin can be used you need to configure AMP in a specific way.
 
 ### Configure Permissions and Add to your Discord Server
 * Click the `OAuth2` option on the left hand menu followed by `URL Generator`
-* Select `bot` followed by `Send Messages`,`Embed Links`,`Read Message History`, and `Add Reactions`
+* Select `bot` followed by `Send Messages`,`Manage Messages`,`Embed Links`,`Read Message History`, and `Add Reactions`
 * Copy the resulting URL and paste into a new browser tab
 * Log in if nedded and add the bot to your Discord server by selecting it in the list
 * If you plan to use pemissions for the server commands, create a new role on your Discord server to use later on.
@@ -68,3 +68,6 @@ Before the plugin can be used you need to configure AMP in a specific way.
 |Bot Activated|If the bot should be activated|
 |Restrict Functions to Discord Role|If server commands (start/stop/restart/kill/update) should be restricted to a Discord Role|
 |Discord Role Name|Role name associated with the permissions for the previous setting.|
+|Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info display.|
+|Post Join and Leave Messages|If the bot should post user join and leave events to a Discord channel|
+|Post Join and Leave Messages Channel|Channel name for the bot to post join and leave events to (only if enabled)|
