@@ -420,12 +420,18 @@ namespace DiscordBotPlugin
 
             //add buttons
             var builder = new ComponentBuilder();
-            builder.WithButton("Start Server", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success);
-            builder.WithButton("Stop Server", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
-            builder.WithButton("Restart Server", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
-            builder.WithButton("Kill Server", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
-            builder.WithButton("Update Server", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
-
+            if(_settings.MainSettings.ShowStartButton)
+                builder.WithButton("Start Server", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success);
+            if(_settings.MainSettings.ShowStopButton)
+                builder.WithButton("Stop Server", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
+            if(_settings.MainSettings.ShowRestartButton)
+                builder.WithButton("Restart Server", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
+            if(_settings.MainSettings.ShowKillButton)
+                builder.WithButton("Kill Server", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
+            if(_settings.MainSettings.ShowUpdateButton)
+                builder.WithButton("Update Server", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
+            if(_settings.MainSettings.ShowManageButton)
+                builder.WithButton("Manage Server", "manage-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
 
             //if updating an existing message
             if (updateExisting)
@@ -446,6 +452,7 @@ namespace DiscordBotPlugin
                             await existingMsg.ModifyAsync(x =>
                             {
                                 x.Embed = embed.Build();
+                                x.Components = builder.Build();
                             });
                         }
                         else
@@ -611,7 +618,11 @@ namespace DiscordBotPlugin
                 application.Update();
                 await ButtonResonse("Update", arg);
             }
-
+            if (arg.Data.CustomId.Equals("manage-server-" + aMPInstanceInfo.InstanceId))
+            {
+                await ManageServer(arg);
+                await ButtonResonse("Manage", arg);
+            }
         }
 
         private async Task ButtonResonse(string Command, SocketMessageComponent arg)
@@ -716,6 +727,13 @@ namespace DiscordBotPlugin
                 embed.WithCurrentTimestamp();
                 await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
             }
+        }
+
+        private async Task ManageServer(SocketMessageComponent arg)
+        {
+            var builder = new ComponentBuilder();
+            builder.WithButton("Manage Server",style: ButtonStyle.Link, url: "https://" + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
+            await arg.User.SendMessageAsync("Link to management panel:",components: builder.Build());
         }
     }
 }
