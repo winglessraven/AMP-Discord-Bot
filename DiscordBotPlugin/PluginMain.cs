@@ -596,11 +596,6 @@ namespace DiscordBotPlugin
                 application.Stop();
                 await ButtonResonse("Stop", arg);
             }
-            if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
-            {
-                application.Stop();
-                await ButtonResonse("Stop", arg);
-            }
             if (arg.Data.CustomId.Equals("restart-server-" + aMPInstanceInfo.InstanceId))
             {
                 application.Restart();
