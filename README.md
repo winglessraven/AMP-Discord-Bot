@@ -71,3 +71,10 @@ Before the plugin can be used you need to configure AMP in a specific way.
 |Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info display.|
 |Post Join and Leave Messages|If the bot should post user join and leave events to a Discord channel|
 |Post Join and Leave Messages Channel|Channel name for the bot to post join and leave events to (only if enabled)|
+|Base Management URL|Address to be used to manage instances.  Should be in the format of `amp.domain.com` or your external IP address|
+|Display Start Button|Toggle the start button on the info message|
+|Display Stop Button|Toggle the stop button on the info message|
+|Display Restart Button|Toggle the restart button on the info message|
+|Display Kill Button|Toggle the kill button on the info message|
+|Display Update Button|Toggle the update button on the info message|
+|Display Manage Button|Toggle the manage button on the info message|
