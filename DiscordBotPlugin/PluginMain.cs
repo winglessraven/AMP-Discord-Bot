@@ -17,11 +17,12 @@ namespace DiscordBotPlugin
         private readonly IPlatformInfo platform;
         private readonly IRunningTasksManager _tasks;
         private readonly IApplicationWrapper application;
+        private readonly IAMPInstanceInfo aMPInstanceInfo;
         private DiscordSocketClient _client;
         private Emoji emoji = new Emoji("👍"); //bot reaction emoji
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
-            IRunningTasksManager taskManager, IApplicationWrapper Application)
+            IRunningTasksManager taskManager, IApplicationWrapper Application, IAMPInstanceInfo AMPInstanceInfo)
         {
             config.SaveMethod = PluginSaveMethod.KVP;
             config.KVPSeparator = "=";
@@ -30,6 +31,7 @@ namespace DiscordBotPlugin
             _settings = config.Load<Settings>(AutoSave: true); //Automatically saves settings when they're changed.
             _tasks = taskManager;
             application = Application;
+            aMPInstanceInfo = AMPInstanceInfo;
             _settings.SettingModified += Settings_SettingModified;
         }
 
@@ -64,6 +66,7 @@ namespace DiscordBotPlugin
                 {
                     if (_client.ConnectionState == ConnectionState.Connected)
                     {
+                        _client.ButtonExecuted -= OnButtonPress;
                         _client.MessageReceived -= OnMessageReceived;
                         _client.Log -= Log;
                         _client.LogoutAsync();
@@ -110,6 +113,7 @@ namespace DiscordBotPlugin
             //attach logs and events
             _client.Log += Log;
             _client.MessageReceived += OnMessageReceived;
+            _client.ButtonExecuted += OnButtonPress;
 
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
@@ -404,8 +408,16 @@ namespace DiscordBotPlugin
             }
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
 
+            var builder = new ComponentBuilder();
+
+            builder.WithButton("Start Server", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success);
+            builder.WithButton("Stop Server", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
+            builder.WithButton("Restart Server", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+            builder.WithButton("Kill Server", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
+            builder.WithButton("Update Server", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
+
             //post bot reply
-            await msg.ReplyAsync(embed: embed.Build());
+            await msg.ReplyAsync(embed: embed.Build(),components: builder.Build());
         }
 
         private async Task ShowHelp(SocketUserMessage msg)
@@ -487,6 +499,91 @@ namespace DiscordBotPlugin
                 await Task.Delay(10000);
             }
         }
+
+        private async Task OnButtonPress(SocketMessageComponent arg)
+        {
+            log.Info("Button pressed: " + arg.Data.CustomId.ToString());
+
+            //temp bool for permission check
+            bool hasServerPermission = false;
+
+            //check if the user that pressed the button has permission
+            _client.PurgeUserCache(); //try to clear cache so we can get the latest roles
+            if (arg.User is SocketGuildUser user)
+                //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+            if (!hasServerPermission)
+            {
+                //no permission, mark as responded and get out of here
+                await arg.DeferAsync();
+                return;
+            }
+                
+            if(arg.Data.CustomId.Equals("start-server-" + aMPInstanceInfo.InstanceId))
+            {
+                application.Start();
+                await ButtonResonse("Start", arg);
+            }
+            if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
+            {
+                 application.Stop();
+                await ButtonResonse("Stop", arg);
+            }
+            if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
+            {
+                application.Stop();
+                await ButtonResonse("Stop", arg);
+            }
+            if (arg.Data.CustomId.Equals("restart-server-" + aMPInstanceInfo.InstanceId))
+            {
+                application.Restart();
+                await ButtonResonse("Restart", arg);
+            }
+            if (arg.Data.CustomId.Equals("kill-server-" + aMPInstanceInfo.InstanceId))
+            {
+                application.Kill();
+                await ButtonResonse("Kill", arg);
+            }
+            if (arg.Data.CustomId.Equals("update-server-" + aMPInstanceInfo.InstanceId))
+            {
+                application.Update();
+                await ButtonResonse("Update", arg);
+            }
+
+        }
+
+        private async Task ButtonResonse(string Command, SocketMessageComponent arg)
+        {
+            //build bot response
+            var embed = new EmbedBuilder
+            {
+                Title = "Server Command Sent",
+                Description = Command + " command has been sent to the " + application.ApplicationName + " server.",
+                Color = Color.LightGrey,
+                ThumbnailUrl = _settings.MainSettings.GameImageURL
+            };
+
+            embed.AddField("Requested by", arg.User.Mention, true);
+            embed.WithFooter(_settings.MainSettings.BotTagline);
+            embed.WithCurrentTimestamp();
+            //await arg.RespondAsync(embed:embed.Build());
+
+            //get guild
+            var chnl = arg.Message.Channel as SocketGuildChannel;
+            var guild = chnl.Guild.Id;
+            var channelID = arg.Message.Channel.Id;
+
+            if (_settings.MainSettings.ButtonResponseChannel != "")
+            {
+                channelID = Convert.ToUInt64(_settings.MainSettings.ButtonResponseChannel);
+            }
+            
+            log.Debug("Guild: " + guild + " || Channel: " + channelID);
+
+            await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
+            await arg.DeferAsync();
+        }    
     }
 }
 

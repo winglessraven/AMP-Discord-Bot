@@ -39,6 +39,9 @@ namespace DiscordBotPlugin
 
             [WebSetting("Discord Role Name", "(name of the role in your Discord server that should be allowed to excecute server starts/stops)", false)]
             public string DiscordRole = "";
+
+            [WebSetting("Button Resonse Channel ID", "(channel ID of where to respond to button presses (right click on the channel in Discord and click 'Copy ID'. If left blank response will be the same channel as the info display)", false)]
+            public string ButtonResponseChannel = "";
         }
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();
