@@ -45,6 +45,13 @@ namespace DiscordBotPlugin
             public string ButtonResponseChannel = "";
 
             public List<string> InfoMessageDetails = new List<string>();
+
+            [WebSetting("Post Join and Leave Messages", "(post player join and leave events to a Discord channel)", false)]
+            public bool PostPlayerEvents = false;
+
+            [WebSetting("Post Join and Leave Messages Channel Name", "(channel name to post player join and leave events)", false)]
+            public string PostPlayerEventsChannel = "";
+
         }
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();

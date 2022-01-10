@@ -35,6 +35,10 @@ namespace DiscordBotPlugin
             aMPInstanceInfo = AMPInstanceInfo;
             _config = config;
             _settings.SettingModified += Settings_SettingModified;
+
+            IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+            hasSimpleUserList.UserJoins += UserJoins;
+            hasSimpleUserList.UserLeaves += UserLeaves;
         }
 
         public override void Init(out WebMethodsBase APIMethods)
@@ -643,6 +647,80 @@ namespace DiscordBotPlugin
 
             await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             await arg.DeferAsync();
+        }
+
+        private async void UserJoins(object sender,UserEventArgs args)
+        {
+            if (!_settings.MainSettings.PostPlayerEvents)
+                return;
+
+            foreach (SocketGuild socketGuild in _client.Guilds)
+            {
+                var guildID = socketGuild.Id;
+                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                if (eventChannel == null)
+                    return; //doesn't exist so stop here
+
+                string userName = args.User.Name;
+
+                //build bot message
+                var embed = new EmbedBuilder
+                {
+                    Title = "Server Event",
+                    Color = Color.LightGrey,
+                    ThumbnailUrl = _settings.MainSettings.GameImageURL
+                };
+
+                if (userName != "")
+                {
+                    embed.Description = userName + " joined the " + application.ApplicationName + " server.";
+                }
+                else
+                {
+                    embed.Description = "A player joined the " + application.ApplicationName + " server.";
+                }
+
+                embed.WithFooter(_settings.MainSettings.BotTagline);
+                embed.WithCurrentTimestamp();
+                await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
+            }
+        }
+
+        private async void UserLeaves(object sender, UserEventArgs args)
+        {
+            if (!_settings.MainSettings.PostPlayerEvents)
+                return;
+
+            foreach (SocketGuild socketGuild in _client.Guilds)
+            {
+                var guildID = socketGuild.Id;
+                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                if (eventChannel == null)
+                    return; //doesn't exist so stop here
+
+                string userName = args.User.Name;
+
+                //build bot message
+                var embed = new EmbedBuilder
+                {
+                    Title = "Server Event",
+                    Color = Color.LightGrey,
+                    ThumbnailUrl = _settings.MainSettings.GameImageURL
+                };
+
+                if (userName != "")
+                {
+                    embed.Description = userName + " left the " + application.ApplicationName + " server.";
+                }
+                else
+                {
+                    embed.Description = "A player left the " + application.ApplicationName + " server.";
+                }
+                
+                embed.WithFooter(_settings.MainSettings.BotTagline);
+                embed.WithCurrentTimestamp();
+                await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
+            }
         }
     }
 }
