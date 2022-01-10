@@ -18,6 +18,7 @@ namespace DiscordBotPlugin
         private readonly IRunningTasksManager _tasks;
         private readonly IApplicationWrapper application;
         private readonly IAMPInstanceInfo aMPInstanceInfo;
+        private readonly IConfigSerializer _config;
         private DiscordSocketClient _client;
         private Emoji emoji = new Emoji("👍"); //bot reaction emoji
 
@@ -32,6 +33,7 @@ namespace DiscordBotPlugin
             _tasks = taskManager;
             application = Application;
             aMPInstanceInfo = AMPInstanceInfo;
+            _config = config;
             _settings.SettingModified += Settings_SettingModified;
         }
 
@@ -47,11 +49,11 @@ namespace DiscordBotPlugin
             {
                 try
                 {
-                    if(_client == null || _client.ConnectionState == ConnectionState.Disconnected)
+                    if (_client == null || _client.ConnectionState == ConnectionState.Disconnected)
                     {
                         _ = ConnectDiscordAsync(_settings.MainSettings.BotToken);
                     }
-                    
+
                 }
                 catch (Exception exception)
                 {
@@ -156,7 +158,7 @@ namespace DiscordBotPlugin
 
                 //info command
                 if (msg.Content.ToLower().Contains("info"))
-                    await GetServerInfo(msg);
+                    await GetServerInfo(false, msg);
 
                 //following commands require permission so don't bother checking for matches if not allowed
                 if (!hasServerPermission)
@@ -345,10 +347,14 @@ namespace DiscordBotPlugin
             }
         }
 
-        private async Task GetServerInfo(SocketUserMessage msg)
+        private async Task GetServerInfo(bool updateExisting, SocketUserMessage msg)
         {
+            if (_client.ConnectionState != ConnectionState.Connected)
+                return;
+
             //bot reaction
-            await msg.AddReactionAsync(emoji);
+            if (!updateExisting)
+                await msg.AddReactionAsync(emoji);
 
             //cast to get player count / info
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
@@ -372,7 +378,7 @@ namespace DiscordBotPlugin
             //server off or errored
             else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
             {
-                embed.AddField("Server Status", ":no_entry: Offline | Type `@" + _client.CurrentUser.Username + " start server` to start the server", false);
+                embed.AddField("Server Status", ":no_entry: Offline", false);
             }
             //everything else
             else
@@ -408,16 +414,66 @@ namespace DiscordBotPlugin
             }
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
 
+            //add buttons
             var builder = new ComponentBuilder();
-
             builder.WithButton("Start Server", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success);
             builder.WithButton("Stop Server", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
-            builder.WithButton("Restart Server", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+            builder.WithButton("Restart Server", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
             builder.WithButton("Kill Server", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger);
             builder.WithButton("Update Server", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
 
-            //post bot reply
-            await msg.ReplyAsync(embed: embed.Build(),components: builder.Build());
+
+            //if updating an existing message
+            if (updateExisting)
+            {
+                foreach (string details in _settings.MainSettings.InfoMessageDetails)
+                {
+                    try
+                    {
+                        string[] split = details.Split('-');
+
+                        var existingMsg = await _client
+                            .GetGuild(Convert.ToUInt64(split[0]))
+                            .GetTextChannel(Convert.ToUInt64(split[1]))
+                            .GetMessageAsync(Convert.ToUInt64(split[2])) as IUserMessage;
+
+                        if (existingMsg != null)
+                        {
+                            await existingMsg.ModifyAsync(x =>
+                            {
+                                x.Embed = embed.Build();
+                            });
+                        }
+                        else
+                        {
+                            //message doesn't exist, remove from update list
+                            _settings.MainSettings.InfoMessageDetails.Remove(details);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        //error updating message
+                        log.Error(ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                var chnl = msg.Channel as SocketGuildChannel;
+                var guild = chnl.Guild.Id;
+                var channelID = msg.Channel.Id;
+
+                //post bot reply
+                var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
+
+                log.Debug("Message ID: " + message.Id.ToString());
+
+                _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString());
+                _config.Save(_settings);
+
+                //remove original message
+                await msg.DeleteAsync();
+            }
         }
 
         private async Task ShowHelp(SocketUserMessage msg)
@@ -488,6 +544,12 @@ namespace DiscordBotPlugin
                         await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
                     }
                     await _client.SetStatusAsync(status);
+
+                    //update the embed if it exists
+                    if (_settings.MainSettings.InfoMessageDetails != null)
+                        if(_settings.MainSettings.InfoMessageDetails.Count > 0)
+                            _ = GetServerInfo(true, null);
+
                 }
                 catch (System.Net.WebException exception)
                 {
@@ -502,7 +564,7 @@ namespace DiscordBotPlugin
 
         private async Task OnButtonPress(SocketMessageComponent arg)
         {
-            log.Info("Button pressed: " + arg.Data.CustomId.ToString());
+            log.Debug("Button pressed: " + arg.Data.CustomId.ToString());
 
             //temp bool for permission check
             bool hasServerPermission = false;
@@ -519,15 +581,15 @@ namespace DiscordBotPlugin
                 await arg.DeferAsync();
                 return;
             }
-                
-            if(arg.Data.CustomId.Equals("start-server-" + aMPInstanceInfo.InstanceId))
+
+            if (arg.Data.CustomId.Equals("start-server-" + aMPInstanceInfo.InstanceId))
             {
                 application.Start();
                 await ButtonResonse("Start", arg);
             }
             if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
             {
-                 application.Stop();
+                application.Stop();
                 await ButtonResonse("Stop", arg);
             }
             if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
@@ -567,23 +629,21 @@ namespace DiscordBotPlugin
             embed.AddField("Requested by", arg.User.Mention, true);
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
-            //await arg.RespondAsync(embed:embed.Build());
 
             //get guild
             var chnl = arg.Message.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
+            var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
             var channelID = arg.Message.Channel.Id;
 
-            if (_settings.MainSettings.ButtonResponseChannel != "")
-            {
-                channelID = Convert.ToUInt64(_settings.MainSettings.ButtonResponseChannel);
-            }
-            
+            if (logChannel != null)
+                channelID = logChannel.Id;
+
             log.Debug("Guild: " + guild + " || Channel: " + channelID);
 
             await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             await arg.DeferAsync();
-        }    
+        }
     }
 }
 
