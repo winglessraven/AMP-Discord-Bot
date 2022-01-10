@@ -52,6 +52,26 @@ namespace DiscordBotPlugin
             [WebSetting("Post Join and Leave Messages Channel Name", "(channel name to post player join and leave events)", false)]
             public string PostPlayerEventsChannel = "";
 
+            [WebSetting("Base Management URL", "(address used to manage instances, should be in the format of amp.domain.com or your external IP if you do not use a domain)", false)]
+            public string ManagementURL = "";
+
+            [WebSetting("Display Start Button", "(toggle the start button visibility on the info message)", false)]
+            public bool ShowStartButton = false;
+
+            [WebSetting("Display Stop Button", "(toggle the stop button visibility on the info message)", false)]
+            public bool ShowStopButton = false;
+
+            [WebSetting("Display Restart Button", "(toggle the restart button visibility on the info message)", false)]
+            public bool ShowRestartButton = false;
+
+            [WebSetting("Display Kill Button", "(toggle the kill button visibility on the info message)", false)]
+            public bool ShowKillButton = false;
+
+            [WebSetting("Display Update Button", "(toggle the update button visibility on the info message)", false)]
+            public bool ShowUpdateButton = false;
+
+            [WebSetting("Display Manage Button", "(toggle the manage button visibility on the info message)", false)]
+            public bool ShowManageButton = false;
         }
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();
