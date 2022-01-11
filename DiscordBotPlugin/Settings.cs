@@ -35,7 +35,7 @@ namespace DiscordBotPlugin
             [WebSetting("Bot Activated", "(turn the bot on and off)", false)]
             public bool BotActive = false;
 
-            [WebSetting("Bot Refresh Interval", "(how often, in seconds, the bot should update the presense and info message.  Recommended minimum 30 seconds otherwise requests to update Discord could be throttled)", false)]
+            [WebSetting("Bot Refresh Interval", "(how often, in seconds, the bot should update the presence and info message.  Recommended minimum 30 seconds otherwise requests to update Discord could be throttled)", false)]
             public int BotRefreshInterval = 30;
 
             [WebSetting("Restrict Functions to Discord Role", "(restrict server functions (start/stop/restart/kill/update) to Discord Role)", false)]
