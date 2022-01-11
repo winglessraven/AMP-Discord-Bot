@@ -609,7 +609,7 @@ namespace DiscordBotPlugin
                     log.Info("Exception: " + exception.Message);
                 }
 
-                await Task.Delay(10000);
+                await Task.Delay(_settings.MainSettings.BotRefreshInterval * 1000);
             }
         }
 
