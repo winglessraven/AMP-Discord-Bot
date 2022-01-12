@@ -66,6 +66,7 @@ Before the plugin can be used you need to configure AMP in a specific way.
 |Game Image URL|A publicly accessible image to be shown in the `@[BOT NAME]` info response|
 |Valid Player Count|Set to true if the server has a valid player count, this will determine if the online count is shown in Discord|
 |Bot Activated|If the bot should be activated|
+|Bot Refresh Interval|How often, in seconds, the bot should update the presence and info message. Recommended minimum 30 seconds otherwise requests to Discord could be throttled|
 |Restrict Functions to Discord Role|If server commands (start/stop/restart/kill/update) should be restricted to a Discord Role|
 |Discord Role Name|Role name associated with the permissions for the previous setting.|
 |Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info display.|
