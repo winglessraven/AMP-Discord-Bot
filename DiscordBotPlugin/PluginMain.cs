@@ -113,8 +113,11 @@ namespace DiscordBotPlugin
         /// <returns></returns>
         public async Task ConnectDiscordAsync(string BotToken)
         {
+            DiscordSocketConfig config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
+
             //init Discord client & command service
-            _client = new DiscordSocketClient();
+            _client = new DiscordSocketClient(config);
+
 
             //attach logs and events
             _client.Log += Log;
