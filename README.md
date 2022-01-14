@@ -79,3 +79,4 @@ Before the plugin can be used you need to configure AMP in a specific way.
 |Display Kill Button|Toggle the kill button on the info message|
 |Display Update Button|Toggle the update button on the info message|
 |Display Manage Button|Toggle the manage button on the info message|
+|Display Online Player List|Show a list of online players in the info panel (if supported)|
