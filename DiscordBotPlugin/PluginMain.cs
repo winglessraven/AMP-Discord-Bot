@@ -408,9 +408,31 @@ namespace DiscordBotPlugin
                 embed.AddField("Uptime", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds), true);
             }
 
+            //if there is a valid player count, show the online player count
             if (_settings.MainSettings.ValidPlayerCount)
             {
                 embed.AddField("Player Count", onlinePlayers + "/" + maximumPlayers, true);
+            }
+
+            //if show online players is enabled, attempt to get the player names and show them if available
+            if(_settings.MainSettings.ShowOnlinePlayers)
+            {
+                List<string> onlinePlayerNames = new List<string>();
+                foreach(SimpleUser user in hasSimpleUserList.Users)
+                {
+                    if(user.Name != null && user.Name != "")
+                        onlinePlayerNames.Add(user.Name);
+                }
+
+                if(onlinePlayerNames.Count != 0)
+                {
+                    string names = "";
+                    foreach(string s in onlinePlayerNames)
+                    {
+                        names += s + Environment.NewLine;
+                    }
+                    embed.AddField("Online Players", names,false);
+                }
             }
 
             embed.WithFooter(_settings.MainSettings.BotTagline);

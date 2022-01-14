@@ -75,6 +75,9 @@ namespace DiscordBotPlugin
 
             [WebSetting("Display Manage Button", "(toggle the manage button visibility on the info message)", false)]
             public bool ShowManageButton = false;
+
+            [WebSetting("Display Online Player List", "(display online player list in the info panel - if not compatible with the server nothing will show)", false)]
+            public bool ShowOnlinePlayers = false;
         }
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();
