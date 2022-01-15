@@ -190,6 +190,10 @@ namespace DiscordBotPlugin
                 //kill server command
                 if (msg.Content.ToLower().Contains("kill server"))
                     await KillServer(msg);
+
+                //send console command
+                if (msg.Content.ToLower().Contains("console"))
+                    await SendConsoleCommand(msg);
             }
         }
 
@@ -351,6 +355,41 @@ namespace DiscordBotPlugin
             catch (Exception exception)
             {
                 log.Error("Cannot kill application: " + exception.Message);
+            }
+        }
+
+        private async Task SendConsoleCommand(SocketUserMessage msg)
+        {
+            try
+            {
+                //bot reaction
+                await msg.AddReactionAsync(emoji);
+
+                //get the command to be sent
+                string command = msg.Content.Split("console ")[1];
+
+                //send the kill command to the instance
+                IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                writeableConsole.WriteLine(command);
+
+                //build bot response
+                var embed = new EmbedBuilder
+                {
+                    Title = "Command Sent",
+                    Description = "Command sent to the " + application.ApplicationName +  " server: `" + command + "`",
+                    Color = Color.Green,
+                };
+
+                embed.WithFooter(_settings.MainSettings.BotTagline);
+                embed.WithCurrentTimestamp();
+                embed.WithThumbnailUrl("https://i.gifer.com/NZzo.gif");
+
+                //post bot response
+                await msg.ReplyAsync(embed: embed.Build());
+            }
+            catch (Exception exception)
+            {
+                log.Error("Cannot send command: " + exception.Message);
             }
         }
 
@@ -571,6 +610,7 @@ namespace DiscordBotPlugin
                 "`@" + _client.CurrentUser.Username + " restart server` - Restart the Server" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " kill server` - Kill the Server" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " update server` - Update the Server" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " console` - send a command to the server, add command after `console`" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " help` - Show this message" + Environment.NewLine);
 
             //post bot reply
