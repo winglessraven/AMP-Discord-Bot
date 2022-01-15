@@ -18,6 +18,7 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 | `@[BOT NAME] restart server`   | Restart the Server |
 | `@[BOT NAME] kill server`   | Kill the Server |
 | `@[BOT NAME] update server`   | Update the Server |
+| `@[BOT NAME] console`   | Send a command to the server. All text after `console` will be sent |
 | `@[BOT NAME] help`   | Show possible bot commands |
 # Configuration Steps
 ## Configure AMP
