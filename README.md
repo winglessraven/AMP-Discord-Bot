@@ -22,7 +22,7 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 | `@[BOT NAME] help`   | Show possible bot commands |
 # Configuration Steps
 ## Configure AMP
-Before the plugin can be used you need to configure AMP in a specific way.
+Before the plugin can be used you need to configure AMP in a specific way.  **NOTE: The plugin cannot be used on ADS. It can only run on non-ADS instances.**
 ### Activate with a Developer Licence
 * Request a developer licence from AMP via the licence portal https://manage.cubecoders.com/Login
 * Once you have received the licence log into your server console and as the amp user run `ampinstmgr stop [ADS INSTANCE NAME]` followed by `ampinstmgr reactivate [INSTANCE NAME] [DEVELOPER KEY]`  where `[INSTANCE NAME]` is the name of your instance you want to set up a bot for and `[DEVELOPER KEY]` is the key received from CubeCoders.
