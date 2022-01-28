@@ -37,6 +37,8 @@ namespace DiscordBotPlugin
             _settings.SettingModified += Settings_SettingModified;
 
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+
+            //register join and leave events
             hasSimpleUserList.UserJoins += UserJoins;
             hasSimpleUserList.UserLeaves += UserLeaves;
         }
@@ -647,18 +649,12 @@ namespace DiscordBotPlugin
                     var memUsage = application.GetRAMUsage();
                     var instanceName = platform.PlatformName;
                     var cpuUsageString = cpuUsage + "%";
-                    var playerCountString = onlinePlayers + "/" + maximumPlayers;
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + playerCountString + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
 
-                    if (_settings.MainSettings.ValidPlayerCount && application.State == ApplicationState.Ready)
-                    {
+                    if (application.State == ApplicationState.Ready)
                         await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers,maximumPlayers), null, ActivityType.Playing);
-                    }
-                    else
-                    {
-                        await _client.SetGameAsync(GetApplicationStateString(), null, ActivityType.Playing);
-                    }
+
                     await _client.SetStatusAsync(status);
 
                     //update the embed if it exists
