@@ -368,7 +368,7 @@ namespace DiscordBotPlugin
                 //get the command to be sent
                 string command = msg.Content.Split("console ")[1];
 
-                //send the kill command to the instance
+                //send the command to the instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine(command);
 
@@ -419,17 +419,17 @@ namespace DiscordBotPlugin
             //server online
             if (application.State == ApplicationState.Ready)
             {
-                embed.AddField("Server Status", ":white_check_mark: Online", false);
+                embed.AddField("Server Status", ":white_check_mark: " + GetApplicationStateString(), false);
             }
             //server off or errored
             else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
             {
-                embed.AddField("Server Status", ":no_entry: Offline", false);
+                embed.AddField("Server Status", ":no_entry: " + GetApplicationStateString(), false);
             }
             //everything else
             else
             {
-                embed.AddField("Server Status", ":hourglass: " + application.State, false);
+                embed.AddField("Server Status", ":hourglass: " + GetApplicationStateString(), false);
             }
 
             embed.AddField("Server Name", "`" + _settings.MainSettings.ServerDisplayName + "`", true);
@@ -657,7 +657,7 @@ namespace DiscordBotPlugin
                     }
                     else
                     {
-                        await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
+                        await _client.SetGameAsync(GetApplicationStateString(), null, ActivityType.Playing);
                     }
                     await _client.SetStatusAsync(status);
 
@@ -846,6 +846,23 @@ namespace DiscordBotPlugin
             var builder = new ComponentBuilder();
             builder.WithButton("Manage Server", style: ButtonStyle.Link, url: "https://" + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
+        }
+
+        private string GetApplicationStateString()
+        {
+            string state;
+
+            //check for replacement status values
+            if (_settings.MainSettings.ChangeStatus.ContainsKey(application.State.ToString()))
+            {
+                state = _settings.MainSettings.ChangeStatus[application.State.ToString()];
+            }
+            else
+            {
+                state = application.State.ToString();
+            }
+
+            return state;
         }
     }
 }
