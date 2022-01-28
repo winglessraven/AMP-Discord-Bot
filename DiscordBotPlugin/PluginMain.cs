@@ -653,7 +653,7 @@ namespace DiscordBotPlugin
 
                     if (_settings.MainSettings.ValidPlayerCount && application.State == ApplicationState.Ready)
                     {
-                        await _client.SetGameAsync(playerCountString + " players", null, ActivityType.Playing);
+                        await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers,maximumPlayers), null, ActivityType.Playing);
                     }
                     else
                     {
@@ -850,19 +850,32 @@ namespace DiscordBotPlugin
 
         private string GetApplicationStateString()
         {
-            string state;
-
-            //check for replacement status values
+            //if replacement value exists, return it
             if (_settings.MainSettings.ChangeStatus.ContainsKey(application.State.ToString()))
-            {
-                state = _settings.MainSettings.ChangeStatus[application.State.ToString()];
-            }
-            else
-            {
-                state = application.State.ToString();
-            }
+                return _settings.MainSettings.ChangeStatus[application.State.ToString()];
+            
+            //no replacement exists so return the default value
+            return application.State.ToString();
+        }
 
-            return state;
+        private string OnlineBotPresenceString(int onlinePlayers,int maximumPlayers)
+        {
+            //if valid player count and no custom value
+            if (_settings.MainSettings.OnlineBotPresence == "" && _settings.MainSettings.ValidPlayerCount)
+                return onlinePlayers + "/" + maximumPlayers + " players";
+
+            //if no valid player count and no custom value
+            if (_settings.MainSettings.OnlineBotPresence == "")
+                return "Online";
+
+            //get custom value
+            string presence = _settings.MainSettings.OnlineBotPresence;
+
+            //replace variables
+            presence = presence.Replace("{OnlinePlayers}", onlinePlayers.ToString());
+            presence = presence.Replace("{MaximumPlayers}", maximumPlayers.ToString());
+
+            return presence;
         }
     }
 }
