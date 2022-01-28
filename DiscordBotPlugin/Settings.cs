@@ -79,7 +79,7 @@ namespace DiscordBotPlugin
             [WebSetting("Display Online Player List", "(display online player list in the info panel - if not compatible with the server nothing will show)", false)]
             public bool ShowOnlinePlayers = false;
 
-            [WebSetting("Change Displayed Status", "(replace the default AMP status with your own - key is the AMP value, value is the replacement - possible values listed on the [readme](https://github.com/winglessraven/AMP-Discord-Bot))", false)]
+            [WebSetting("Change Displayed Status", "(replace the default AMP status with your own - key is the AMP value, value is the replacement - possible values listed on the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text))", false)]
             public Dictionary<string, string> ChangeStatus = new Dictionary<string, string>();
 
             //Possible options: [Stopped,PreStart,Configuring,Starting,Ready,Restarting,Stopping,PreparingForSleep,Sleeping,Waiting,Installing,Updating,AwaitingUserInput,Failed,Suspended,Maintainence,Indeterminate,Undefined]
