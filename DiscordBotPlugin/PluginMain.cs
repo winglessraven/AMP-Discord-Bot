@@ -37,6 +37,8 @@ namespace DiscordBotPlugin
             _settings.SettingModified += Settings_SettingModified;
 
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+
+            //register join and leave events
             hasSimpleUserList.UserJoins += UserJoins;
             hasSimpleUserList.UserLeaves += UserLeaves;
         }
@@ -368,7 +370,7 @@ namespace DiscordBotPlugin
                 //get the command to be sent
                 string command = msg.Content.Split("console ")[1];
 
-                //send the kill command to the instance
+                //send the command to the instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine(command);
 
@@ -419,17 +421,17 @@ namespace DiscordBotPlugin
             //server online
             if (application.State == ApplicationState.Ready)
             {
-                embed.AddField("Server Status", ":white_check_mark: Online", false);
+                embed.AddField("Server Status", ":white_check_mark: " + GetApplicationStateString(), false);
             }
             //server off or errored
             else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
             {
-                embed.AddField("Server Status", ":no_entry: Offline", false);
+                embed.AddField("Server Status", ":no_entry: " + GetApplicationStateString(), false);
             }
             //everything else
             else
             {
-                embed.AddField("Server Status", ":hourglass: " + application.State, false);
+                embed.AddField("Server Status", ":hourglass: " + GetApplicationStateString(), false);
             }
 
             embed.AddField("Server Name", "`" + _settings.MainSettings.ServerDisplayName + "`", true);
@@ -647,18 +649,12 @@ namespace DiscordBotPlugin
                     var memUsage = application.GetRAMUsage();
                     var instanceName = platform.PlatformName;
                     var cpuUsageString = cpuUsage + "%";
-                    var playerCountString = onlinePlayers + "/" + maximumPlayers;
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + playerCountString + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
 
-                    if (_settings.MainSettings.ValidPlayerCount && application.State == ApplicationState.Ready)
-                    {
-                        await _client.SetGameAsync(playerCountString + " players", null, ActivityType.Playing);
-                    }
-                    else
-                    {
-                        await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
-                    }
+                    if (application.State == ApplicationState.Ready)
+                        await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers,maximumPlayers), null, ActivityType.Playing);
+
                     await _client.SetStatusAsync(status);
 
                     //update the embed if it exists
@@ -846,6 +842,36 @@ namespace DiscordBotPlugin
             var builder = new ComponentBuilder();
             builder.WithButton("Manage Server", style: ButtonStyle.Link, url: "https://" + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
+        }
+
+        private string GetApplicationStateString()
+        {
+            //if replacement value exists, return it
+            if (_settings.MainSettings.ChangeStatus.ContainsKey(application.State.ToString()))
+                return _settings.MainSettings.ChangeStatus[application.State.ToString()];
+            
+            //no replacement exists so return the default value
+            return application.State.ToString();
+        }
+
+        private string OnlineBotPresenceString(int onlinePlayers,int maximumPlayers)
+        {
+            //if valid player count and no custom value
+            if (_settings.MainSettings.OnlineBotPresence == "" && _settings.MainSettings.ValidPlayerCount)
+                return onlinePlayers + "/" + maximumPlayers + " players";
+
+            //if no valid player count and no custom value
+            if (_settings.MainSettings.OnlineBotPresence == "")
+                return "Online";
+
+            //get custom value
+            string presence = _settings.MainSettings.OnlineBotPresence;
+
+            //replace variables
+            presence = presence.Replace("{OnlinePlayers}", onlinePlayers.ToString());
+            presence = presence.Replace("{MaximumPlayers}", maximumPlayers.ToString());
+
+            return presence;
         }
     }
 }
