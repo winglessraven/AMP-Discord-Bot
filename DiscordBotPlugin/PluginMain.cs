@@ -653,7 +653,14 @@ namespace DiscordBotPlugin
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
 
                     if (application.State == ApplicationState.Ready)
-                        await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers,maximumPlayers), null, ActivityType.Playing);
+                    {
+                        await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.Playing);
+                    }
+                    else
+                    {
+                        await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
+                    }
+                        
 
                     await _client.SetStatusAsync(status);
 
