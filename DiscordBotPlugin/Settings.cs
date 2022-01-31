@@ -1,4 +1,5 @@
 ﻿using ModuleShared;
+using System;
 using System.Collections.Generic;
 
 namespace DiscordBotPlugin
@@ -84,6 +85,11 @@ namespace DiscordBotPlugin
 
             [WebSetting("Online Server Bot Presence Text", "(change the presence text when application is running, use {OnlinePlayers} and {MaximumPlayers} as variables)", false)]
             public string OnlineBotPresence = "";
+
+            public Dictionary<string, TimeSpan> PlayTime = new Dictionary<string, TimeSpan>();
+
+            [WebSetting("Display Playtime Leaderboard", "(display the playtime leaderboard on the info panel - top 5 are shown)", false)]
+            public bool ShowPlaytimeLeaderboard = false;
 
         }
 
