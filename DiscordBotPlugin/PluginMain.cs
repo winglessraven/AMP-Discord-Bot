@@ -7,6 +7,8 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using System.Linq;
+using System.Text;
+using System.Linq.Expressions;
 
 namespace DiscordBotPlugin
 {
@@ -21,6 +23,7 @@ namespace DiscordBotPlugin
         private readonly IConfigSerializer _config;
         private DiscordSocketClient _client;
         private Emoji emoji = new Emoji("👍"); //bot reaction emoji
+        private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
             IRunningTasksManager taskManager, IApplicationWrapper Application, IAMPInstanceInfo AMPInstanceInfo)
@@ -196,6 +199,10 @@ namespace DiscordBotPlugin
                 //send console command
                 if (msg.Content.ToLower().Contains("console"))
                     await SendConsoleCommand(msg);
+
+                //show playtime table
+                if (msg.Content.ToLower().Contains("playtime"))
+                    await ShowPlayerPlayTime(msg);
             }
         }
 
@@ -378,7 +385,7 @@ namespace DiscordBotPlugin
                 var embed = new EmbedBuilder
                 {
                     Title = "Command Sent",
-                    Description = "Command sent to the " + application.ApplicationName +  " server: `" + command + "`",
+                    Description = "Command sent to the " + application.ApplicationName + " server: `" + command + "`",
                     Color = Color.Green,
                 };
 
@@ -456,32 +463,41 @@ namespace DiscordBotPlugin
             }
 
             //if show online players is enabled, attempt to get the player names and show them if available
-            if(_settings.MainSettings.ShowOnlinePlayers)
+            if (_settings.MainSettings.ShowOnlinePlayers)
             {
                 List<string> onlinePlayerNames = new List<string>();
-                foreach(SimpleUser user in hasSimpleUserList.Users)
+                foreach (SimpleUser user in hasSimpleUserList.Users)
                 {
-                    if(user.Name != null && user.Name != "")
+                    if (user.Name != null && user.Name != "")
                         onlinePlayerNames.Add(user.Name);
                 }
 
-                if(onlinePlayerNames.Count != 0)
+                if (onlinePlayerNames.Count != 0)
                 {
                     string names = "";
-                    foreach(string s in onlinePlayerNames)
+                    foreach (string s in onlinePlayerNames)
                     {
                         names += s + Environment.NewLine;
                     }
-                    embed.AddField("Online Players", names,false);
+                    embed.AddField("Online Players", names, false);
                 }
             }
 
-            embed.WithFooter(_settings.MainSettings.BotTagline);
-            embed.WithCurrentTimestamp();
             if (_settings.MainSettings.ModpackURL != "")
             {
                 embed.AddField("Server Mod Pack", _settings.MainSettings.ModpackURL, false);
             }
+
+            //if show playtime leaderboard is enabled
+            if (_settings.MainSettings.ShowPlaytimeLeaderboard)
+            {
+                string leaderboard = GetPlayTimeLeaderBoard(5);
+                embed.AddField("Top 5 Players by Play Time",leaderboard,false);
+            }
+
+            embed.WithFooter(_settings.MainSettings.BotTagline);
+            embed.WithCurrentTimestamp();
+            
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
 
             //add buttons
@@ -613,7 +629,35 @@ namespace DiscordBotPlugin
                 "`@" + _client.CurrentUser.Username + " kill server` - Kill the Server" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " update server` - Update the Server" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " console` - send a command to the server, add command after `console`" + Environment.NewLine +
+                "`@" + _client.CurrentUser.Username + " playtime` - show playtime leaderboard" + Environment.NewLine +
                 "`@" + _client.CurrentUser.Username + " help` - Show this message" + Environment.NewLine);
+
+            embed.WithFooter(_settings.MainSettings.BotTagline);
+            embed.WithCurrentTimestamp();
+
+            //post bot reply
+            await msg.ReplyAsync(embed: embed.Build());
+        }
+
+        private async Task ShowPlayerPlayTime(SocketUserMessage msg)
+        {
+            //bot reaction
+            await msg.AddReactionAsync(emoji);
+
+            //build bot response
+            var embed = new EmbedBuilder
+            {
+                Title = "Play Time Leaderboard",
+                Color = Color.LightGrey,
+                ThumbnailUrl = "https://freesvg.org/img/1548372247.png"
+            };
+
+            string leaderboard = GetPlayTimeLeaderBoard(15);
+
+            embed.Description = leaderboard;
+
+            embed.WithFooter(_settings.MainSettings.BotTagline);
+            embed.WithCurrentTimestamp();
 
             //post bot reply
             await msg.ReplyAsync(embed: embed.Build());
@@ -660,7 +704,7 @@ namespace DiscordBotPlugin
                     {
                         await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
                     }
-                        
+
 
                     await _client.SetStatusAsync(status);
 
@@ -772,6 +816,12 @@ namespace DiscordBotPlugin
 
         private async void UserJoins(object sender, UserEventArgs args)
         {
+            //check if player is already in the list, if so remove it - shouldn't be there at this point
+            playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
+
+            //log jointime for player
+            playerPlayTimes.Add(new PlayerPlayTime() { PlayerName = args.User.Name, JoinTime = DateTime.Now });
+
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
 
@@ -809,6 +859,31 @@ namespace DiscordBotPlugin
 
         private async void UserLeaves(object sender, UserEventArgs args)
         {
+            try
+            {
+                //add leavetime for player
+                playerPlayTimes.Find(p => p.PlayerName == args.User.Name).LeaveTime = DateTime.Now;
+
+                //check entry for player, if not there add new entry
+                if (!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
+                    _settings.MainSettings.PlayTime.Add(args.User.Name, new TimeSpan(0));
+
+                TimeSpan sessionPlayTime = playerPlayTimes.Find(p => p.PlayerName == args.User.Name).LeaveTime - playerPlayTimes.Find(p => p.PlayerName == args.User.Name).JoinTime;
+
+                //update main playtime list
+                _settings.MainSettings.PlayTime[args.User.Name] += sessionPlayTime;
+                _config.Save(_settings);
+
+                //remove from 'live' list
+                playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
+
+            }
+            catch (Exception exception)
+            {
+                log.Error(exception.Message);
+            }
+
+
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
 
@@ -856,12 +931,12 @@ namespace DiscordBotPlugin
             //if replacement value exists, return it
             if (_settings.MainSettings.ChangeStatus.ContainsKey(application.State.ToString()))
                 return _settings.MainSettings.ChangeStatus[application.State.ToString()];
-            
+
             //no replacement exists so return the default value
             return application.State.ToString();
         }
 
-        private string OnlineBotPresenceString(int onlinePlayers,int maximumPlayers)
+        private string OnlineBotPresenceString(int onlinePlayers, int maximumPlayers)
         {
             //if valid player count and no custom value
             if (_settings.MainSettings.OnlineBotPresence == "" && _settings.MainSettings.ValidPlayerCount)
@@ -879,6 +954,56 @@ namespace DiscordBotPlugin
             presence = presence.Replace("{MaximumPlayers}", maximumPlayers.ToString());
 
             return presence;
+        }
+
+        private string GetPlayTimeLeaderBoard(int placesToShow)
+        {
+            //create new dictionary to hold logged time plus any current session time
+            Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>();
+
+            playtime = _settings.MainSettings.PlayTime;
+
+            foreach (PlayerPlayTime player in playerPlayTimes)
+            {
+                //check for player, if not there add new entry
+                if (!_settings.MainSettings.PlayTime.ContainsKey(player.PlayerName))
+                    playtime.Add(player.PlayerName, new TimeSpan(0));
+
+                //add any current sessions to the logged playtime
+                playtime[player.PlayerName] += (DateTime.Now - player.JoinTime);
+            }
+
+            var sortedList = playtime.OrderByDescending(v => v.Value).ToList();
+
+            string leaderboard = "```";
+            int position = 1;
+
+            //if nothing is logged yet return no data
+            if(sortedList.Count == 0)
+            {
+                return "```No play time logged yet```";
+            }
+
+            foreach (KeyValuePair<string, TimeSpan> player in sortedList)
+            {
+                //if outside places to show, stop processing
+                if (position > placesToShow)
+                    break;
+
+                leaderboard += string.Format("{0,-4}{1,-20}{2,-15}",position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                position++;
+            }
+
+            leaderboard += "```";
+
+            return leaderboard;
+        }
+
+        public class PlayerPlayTime
+        {
+            public string PlayerName { get; set; }
+            public DateTime JoinTime { get; set; }
+            public DateTime LeaveTime { get; set; }
         }
     }
 }
