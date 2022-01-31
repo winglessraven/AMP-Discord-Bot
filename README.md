@@ -19,6 +19,7 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 | `@[BOT NAME] kill server`   | Kill the Server |
 | `@[BOT NAME] update server`   | Update the Server |
 | `@[BOT NAME] console`   | Send a command to the server. All text after `console` will be sent |
+| `@[BOT NAME] playtime`   | Show playtime leaderboard |
 | `@[BOT NAME] help`   | Show possible bot commands |
 # Configuration Steps
 ## Configure AMP
@@ -81,3 +82,6 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Display Update Button|Toggle the update button on the info message|
 |Display Manage Button|Toggle the manage button on the info message|
 |Display Online Player List|Show a list of online players in the info panel (if supported)|
+|Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)|
+|Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers` as variables|
+|Display Playtime Leaderboard|Toggle the playtime leaderboard on the info message|
