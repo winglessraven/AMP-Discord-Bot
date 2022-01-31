@@ -959,9 +959,7 @@ namespace DiscordBotPlugin
         private string GetPlayTimeLeaderBoard(int placesToShow)
         {
             //create new dictionary to hold logged time plus any current session time
-            Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>();
-
-            playtime = _settings.MainSettings.PlayTime;
+            Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
 
             foreach (PlayerPlayTime player in playerPlayTimes)
             {
@@ -969,8 +967,12 @@ namespace DiscordBotPlugin
                 if (!_settings.MainSettings.PlayTime.ContainsKey(player.PlayerName))
                     playtime.Add(player.PlayerName, new TimeSpan(0));
 
+                TimeSpan currentSession = DateTime.Now - player.JoinTime;
+
+                log.Debug("Player: " + player.PlayerName + " || Current Session: " + currentSession + " || Logged: " + _settings.MainSettings.PlayTime[player.PlayerName]);
+
                 //add any current sessions to the logged playtime
-                playtime[player.PlayerName] += (DateTime.Now - player.JoinTime);
+                playtime[player.PlayerName] = playtime[player.PlayerName].Add(currentSession);
             }
 
             var sortedList = playtime.OrderByDescending(v => v.Value).ToList();
