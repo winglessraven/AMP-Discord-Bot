@@ -822,6 +822,12 @@ namespace DiscordBotPlugin
             //log jointime for player
             playerPlayTimes.Add(new PlayerPlayTime() { PlayerName = args.User.Name, JoinTime = DateTime.Now });
 
+            if(!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
+            {
+                _settings.MainSettings.PlayTime.Add(args.User.Name, TimeSpan.Zero);
+                _config.Save(_settings);
+            }
+
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
 
@@ -963,10 +969,6 @@ namespace DiscordBotPlugin
 
             foreach (PlayerPlayTime player in playerPlayTimes)
             {
-                //check for player, if not there add new entry
-                if (!_settings.MainSettings.PlayTime.ContainsKey(player.PlayerName))
-                    playtime.Add(player.PlayerName, new TimeSpan(0));
-
                 TimeSpan currentSession = DateTime.Now - player.JoinTime;
 
                 log.Debug("Player: " + player.PlayerName + " || Current Session: " + currentSession + " || Logged: " + _settings.MainSettings.PlayTime[player.PlayerName]);
