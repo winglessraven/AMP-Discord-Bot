@@ -59,10 +59,7 @@ namespace DiscordBotPlugin
                 try
                 {
                     if (_client == null || _client.ConnectionState == ConnectionState.Disconnected)
-                    {
                         _ = ConnectDiscordAsync(_settings.MainSettings.BotToken);
-                    }
-
                 }
                 catch (Exception exception)
                 {
@@ -94,6 +91,7 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.BotActive)
             {
                 log.Info("Discord Bot Activated");
+
                 //check if we have a bot token and attempt to connect
                 if (_settings.MainSettings.BotToken != null && _settings.MainSettings.BotToken != "")
                 {
@@ -123,7 +121,6 @@ namespace DiscordBotPlugin
             //init Discord client & command service
             _client = new DiscordSocketClient(config);
 
-
             //attach logs and events
             _client.Log += Log;
             _client.MessageReceived += OnMessageReceived;
@@ -143,13 +140,11 @@ namespace DiscordBotPlugin
         {
             var msg = arg as SocketUserMessage;
 
-            //if messasge not posted by a bot
+            //If the bot posted the message don't go any further
             if (msg.Author.IsBot)
-            {
                 return;
-            }
 
-            //temp bool for permission check
+            //init bool for permission check
             bool hasServerPermission = false;
 
             var context = new SocketCommandContext(_client, msg);
@@ -159,7 +154,9 @@ namespace DiscordBotPlugin
             //is bot mentioned?
             if (msg.HasMentionPrefix(_client.CurrentUser, ref pos))
             {
-                _client.PurgeUserCache(); //try to clear cache so we can get the latest roles
+                //clear cache so we can get the latest roles
+                _client.PurgeUserCache();
+
                 if (context.User is SocketGuildUser user)
                     //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
                     hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
@@ -492,12 +489,12 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.ShowPlaytimeLeaderboard)
             {
                 string leaderboard = GetPlayTimeLeaderBoard(5);
-                embed.AddField("Top 5 Players by Play Time",leaderboard,false);
+                embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
-            
+
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
 
             //add buttons
@@ -675,6 +672,10 @@ namespace DiscordBotPlugin
                     if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                     {
                         status = UserStatus.DoNotDisturb;
+
+                        //if there are still players listed in the timer, remove them
+                        if (playerPlayTimes.Count != 0)
+                            ClearAllPlayTimes();
                     }
                     else if (application.State == ApplicationState.Ready)
                     {
@@ -683,6 +684,10 @@ namespace DiscordBotPlugin
                     else
                     {
                         status = UserStatus.Idle;
+
+                        //if there are still players listed in the timer, remove them
+                        if (playerPlayTimes.Count != 0)
+                            ClearAllPlayTimes();
                     }
 
                     IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
@@ -822,7 +827,7 @@ namespace DiscordBotPlugin
             //log jointime for player
             playerPlayTimes.Add(new PlayerPlayTime() { PlayerName = args.User.Name, JoinTime = DateTime.Now });
 
-            if(!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
+            if (!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
             {
                 _settings.MainSettings.PlayTime.Add(args.User.Name, TimeSpan.Zero);
                 _config.Save(_settings);
@@ -983,7 +988,7 @@ namespace DiscordBotPlugin
             int position = 1;
 
             //if nothing is logged yet return no data
-            if(sortedList.Count == 0)
+            if (sortedList.Count == 0)
             {
                 return "```No play time logged yet```";
             }
@@ -994,13 +999,42 @@ namespace DiscordBotPlugin
                 if (position > placesToShow)
                     break;
 
-                leaderboard += string.Format("{0,-4}{1,-20}{2,-15}",position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
                 position++;
             }
 
             leaderboard += "```";
 
             return leaderboard;
+        }
+
+        private void ClearAllPlayTimes()
+        {
+            try
+            {
+                foreach (PlayerPlayTime playerPlayTime in playerPlayTimes)
+                {
+
+                    log.Debug("Saving playtime for " + playerPlayTime.PlayerName);
+                    //set the leave time as now
+                    playerPlayTime.LeaveTime = DateTime.Now;
+
+                    //check entry for player, if not there add new entry
+                    if (!_settings.MainSettings.PlayTime.ContainsKey(playerPlayTime.PlayerName))
+                        _settings.MainSettings.PlayTime.Add(playerPlayTime.PlayerName, new TimeSpan(0));
+
+                    TimeSpan sessionPlayTime = playerPlayTime.LeaveTime - playerPlayTime.JoinTime;
+
+                    //update main playtime list
+                    _settings.MainSettings.PlayTime[playerPlayTime.PlayerName] += sessionPlayTime;
+                    _config.Save(_settings);
+                }
+                playerPlayTimes.Clear();
+            }
+            catch (Exception exception)
+            {
+                log.Debug(exception.Message);
+            }
         }
 
         public class PlayerPlayTime
