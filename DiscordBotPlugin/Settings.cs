@@ -9,7 +9,7 @@ namespace DiscordBotPlugin
         public class DiscordBotSettings : SettingSectionStore
         {
             [StoreEncrypted]
-            [WebSetting("Discord Bot Token", "(from https://discord.com/developers/applications)", false, "", CustomFieldTypes.Password)]
+            [WebSetting("Discord Bot Token", "(from [Discord Developer Site](https://discord.com/developers/applications))", false, "", CustomFieldTypes.Password)]
             public string BotToken = "";
 
             [WebSetting("Bot Tagline", "(displayed at the bottom of bot embeds)", false)]
@@ -45,7 +45,10 @@ namespace DiscordBotPlugin
             [WebSetting("Discord Role Name", "(name of the role in your Discord server that should be allowed to excecute server starts/stops)", false)]
             public string DiscordRole = "";
 
-            [WebSetting("Button Log Channel Name", "(channel name of where to log button presses. If left blank response will be the same channel as the info display)", false)]
+            [WebSetting("Log Button Presses and Commands", "(log when buttons are pressed and commands are used)", false)]
+            public bool LogButtonsAndCommands = false;
+
+            [WebSetting("Button/Command Log Channel Name", "(channel name of where to log button presses and commands. If left blank response will be the same channel as the info display)", false)]
             public string ButtonResponseChannel = "";
 
             public List<string> InfoMessageDetails = new List<string>();

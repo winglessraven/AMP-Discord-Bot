@@ -1,7 +1,7 @@
 
 # AMP Discord Bot Plugin
 
-A basic Discord bot plugin for AMP that can be used to display the server status along with the ability to manage the server directly from Discord (start / stop / restart / kill / update).
+A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status along with the ability to manage the server directly from Discord (start / stop / restart / kill / update).
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
@@ -12,15 +12,14 @@ A basic Discord bot plugin for AMP that can be used to display the server status
 # Command Reference
 | Command | Description                    |
 | ------------- | ------------------------------ |
-| `@[BOT NAME] info`      | Display Server Info  |
-| `@[BOT NAME] start server`   | Start the Server |
-| `@[BOT NAME] stop server`   | Stop the Server |
-| `@[BOT NAME] restart server`   | Restart the Server |
-| `@[BOT NAME] kill server`   | Kill the Server |
-| `@[BOT NAME] update server`   | Update the Server |
-| `@[BOT NAME] console`   | Send a command to the server. All text after `console` will be sent |
-| `@[BOT NAME] playtime`   | Show playtime leaderboard |
-| `@[BOT NAME] help`   | Show possible bot commands |
+| `/[BOT NAME] info`      | Display Server Info  |
+| `/[BOT NAME] start-server`   | Start the Server |
+| `/[BOT NAME] stop-server`   | Stop the Server |
+| `/[BOT NAME] restart-server`   | Restart the Server |
+| `/[BOT NAME] kill-server`   | Kill the Server |
+| `/[BOT NAME] update-server`   | Update the Server |
+| `/[BOT NAME] console [command]`   | Send a command to the server |
+| `/[BOT NAME] playtime`   | Show playtime leaderboard |
 # Configuration Steps
 ## Configure AMP
 Before the plugin can be used you need to configure AMP in a specific way.  **NOTE: The plugin cannot be used on ADS. It can only run on non-ADS instances.**
@@ -51,7 +50,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 
 ### Configure Permissions and Add to your Discord Server
 * Click the `OAuth2` option on the left hand menu followed by `URL Generator`
-* Select `bot` followed by `Send Messages`,`Manage Messages`,`Embed Links`,`Read Message History`, and `Add Reactions`
+* Select `bot` and `applications.commands` followed by `Send Messages`,`Manage Messages`,`Embed Links`,`Read Message History`, and `Add Reactions`
 * Copy the resulting URL and paste into a new browser tab
 * Log in if nedded and add the bot to your Discord server by selecting it in the list
 * If you plan to use pemissions for the server commands, create a new role on your Discord server to use later on.
@@ -71,6 +70,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Bot Refresh Interval|How often, in seconds, the bot should update the presence and info message. Recommended minimum 30 seconds otherwise requests to Discord could be throttled|
 |Restrict Functions to Discord Role|If server commands (start/stop/restart/kill/update) should be restricted to a Discord Role|
 |Discord Role Name|Role name associated with the permissions for the previous setting.|
+|Log Button Presses and Commands|Toggle if button presses and command use should be logged|
 |Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info display.|
 |Post Join and Leave Messages|If the bot should post user join and leave events to a Discord channel|
 |Post Join and Leave Messages Channel|Channel name for the bot to post join and leave events to (only if enabled)|

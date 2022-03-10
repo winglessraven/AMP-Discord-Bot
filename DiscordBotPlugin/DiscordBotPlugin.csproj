@@ -84,8 +84,8 @@
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.5.0.0\lib\net461\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="ModuleShared">
-      <HintPath>H:\AMPDatastore\Instances\Minecraft02\ModuleShared.dll</HintPath>
+    <Reference Include="ModuleShared, Version=2.3.2.4, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>H:\AMPDatastore\Instances\Minecraft01\ModuleShared.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
