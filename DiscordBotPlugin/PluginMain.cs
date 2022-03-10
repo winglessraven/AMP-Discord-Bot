@@ -515,40 +515,40 @@ namespace DiscordBotPlugin
         private async Task ButtonResonse(string Command, SocketMessageComponent arg)
         {
             //only log if option is enabled
-            if (!_settings.MainSettings.LogButtonsAndCommands)
-                return;
-
-            //build bot response
-            var embed = new EmbedBuilder();
-            if (Command == "Manage")
+            if (_settings.MainSettings.LogButtonsAndCommands)
             {
-                embed.Title = "Manage Request";
-                embed.Description = "Manage URL Request Received";
+                //build bot response
+                var embed = new EmbedBuilder();
+                if (Command == "Manage")
+                {
+                    embed.Title = "Manage Request";
+                    embed.Description = "Manage URL Request Received";
+                }
+                else
+                {
+                    embed.Title = "Server Command Sent";
+                    embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
+                }
+
+                embed.Color = Color.LightGrey;
+                embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
+                embed.AddField("Requested by", arg.User.Mention, true);
+                embed.WithFooter(_settings.MainSettings.BotTagline);
+                embed.WithCurrentTimestamp();
+
+                //get guild
+                var chnl = arg.Message.Channel as SocketGuildChannel;
+                var guild = chnl.Guild.Id;
+                var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+                var channelID = arg.Message.Channel.Id;
+
+                if (logChannel != null)
+                    channelID = logChannel.Id;
+
+                log.Debug("Guild: " + guild + " || Channel: " + channelID);
+
+                await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             }
-            else
-            {
-                embed.Title = "Server Command Sent";
-                embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
-            }
-
-            embed.Color = Color.LightGrey;
-            embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
-            embed.AddField("Requested by", arg.User.Mention, true);
-            embed.WithFooter(_settings.MainSettings.BotTagline);
-            embed.WithCurrentTimestamp();
-
-            //get guild
-            var chnl = arg.Message.Channel as SocketGuildChannel;
-            var guild = chnl.Guild.Id;
-            var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
-            var channelID = arg.Message.Channel.Id;
-
-            if (logChannel != null)
-                channelID = logChannel.Id;
-
-            log.Debug("Guild: " + guild + " || Channel: " + channelID);
-
-            await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             await arg.DeferAsync();
         }
 
