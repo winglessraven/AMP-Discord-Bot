@@ -7,8 +7,7 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using System.Linq;
-using System.Text;
-using System.Linq.Expressions;
+using Discord.Net;
 
 namespace DiscordBotPlugin
 {
@@ -22,7 +21,6 @@ namespace DiscordBotPlugin
         private readonly IAMPInstanceInfo aMPInstanceInfo;
         private readonly IConfigSerializer _config;
         private DiscordSocketClient _client;
-        private Emoji emoji = new Emoji("👍"); //bot reaction emoji
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
@@ -75,8 +73,9 @@ namespace DiscordBotPlugin
                     if (_client.ConnectionState == ConnectionState.Connected)
                     {
                         _client.ButtonExecuted -= OnButtonPress;
-                        _client.MessageReceived -= OnMessageReceived;
                         _client.Log -= Log;
+                        _client.Ready -= ClientReady;
+                        _client.SlashCommandExecuted -= SlashCommandHandler;
                         _client.LogoutAsync();
                     }
                 }
@@ -123,8 +122,10 @@ namespace DiscordBotPlugin
 
             //attach logs and events
             _client.Log += Log;
-            _client.MessageReceived += OnMessageReceived;
             _client.ButtonExecuted += OnButtonPress;
+            _client.Ready += ClientReady;
+            _client.SlashCommandExecuted += SlashCommandHandler;
+
 
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
@@ -135,278 +136,37 @@ namespace DiscordBotPlugin
             await Task.Delay(-1);
         }
 
-        //listen for messages in Discord
-        private async Task OnMessageReceived(SocketMessage arg)
-        {
-            var msg = arg as SocketUserMessage;
-
-            //If the bot posted the message don't go any further
-            if (msg.Author.IsBot)
-                return;
-
-            //init bool for permission check
-            bool hasServerPermission = false;
-
-            var context = new SocketCommandContext(_client, msg);
-
-            int pos = 0;
-
-            //is bot mentioned?
-            if (msg.HasMentionPrefix(_client.CurrentUser, ref pos))
-            {
-                //clear cache so we can get the latest roles
-                _client.PurgeUserCache();
-
-                if (context.User is SocketGuildUser user)
-                    //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
-
-                //help command
-                if (msg.Content.ToLower().Contains("help"))
-                    await ShowHelp(msg);
-
-                //info command
-                if (msg.Content.ToLower().Contains("info"))
-                    await GetServerInfo(false, msg);
-
-                //following commands require permission so don't bother checking for matches if not allowed
-                if (!hasServerPermission)
-                    return;
-
-                //restart server command
-                if (msg.Content.ToLower().Contains("restart server"))
-                    await RestartServer(msg);
-
-                //stop server command
-                if (msg.Content.ToLower().Contains("stop server"))
-                    await StopServer(msg);
-
-                //start server command
-                if (msg.Content.ToLower().Contains("start server") && !msg.Content.ToLower().Contains("restart"))
-                    await StartServer(msg);
-
-                //update server command
-                if (msg.Content.ToLower().Contains("update server"))
-                    await UpdateServer(msg);
-
-                //kill server command
-                if (msg.Content.ToLower().Contains("kill server"))
-                    await KillServer(msg);
-
-                //send console command
-                if (msg.Content.ToLower().Contains("console"))
-                    await SendConsoleCommand(msg);
-
-                //show playtime table
-                if (msg.Content.ToLower().Contains("playtime"))
-                    await ShowPlayerPlayTime(msg);
-            }
-        }
-
         private Task Log(LogMessage msg)
         {
             log.Info(msg.ToString());
             return Task.CompletedTask;
         }
 
-        private async Task RestartServer(SocketUserMessage msg)
+    
+
+        private Task SendConsoleCommand(SocketSlashCommand msg)
         {
             try
             {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
-                //send the command to the instance
-                application.Restart();
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Restart command has been sent to the " + application.ApplicationName + " server.  It will be back online shortly!",
-                    Color = Color.Blue,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/5ug7.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
-            }
-            catch (Exception exception)
-            {
-                log.Error("Cannot restart application: " + exception.Message);
-            }
-        }
-
-        private async Task StartServer(SocketUserMessage msg)
-        {
-            try
-            {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
-                //send the start command to the instance
-                application.Start();
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Start command has been sent to the " + application.ApplicationName + " server.  Should be online soon!",
-                    Color = Color.Green,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/6tIB.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
-            }
-            catch (Exception exception)
-            {
-                log.Error("Cannot start application: " + exception.Message);
-            }
-        }
-
-        private async Task StopServer(SocketUserMessage msg)
-        {
-            try
-            {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
-                //send the stop command to the instance
-                application.Stop();
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Stop command has been sent to the " + application.ApplicationName + " server.  Shutting down now!",
-                    Color = Color.Red,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/3tes.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
-            }
-            catch (Exception exception)
-            {
-                log.Error("Cannot stop application: " + exception.Message);
-            }
-        }
-
-        private async Task UpdateServer(SocketUserMessage msg)
-        {
-            try
-            {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
-                //send the update command to the instance
-                application.Update();
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Update command has been sent to the " + application.ApplicationName + " server.  If an update is available it will be updated shortly!",
-                    Color = Color.Green,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/UGD4.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
-            }
-            catch (Exception exception)
-            {
-                log.Error("Cannot update application: " + exception.Message);
-            }
-        }
-
-        private async Task KillServer(SocketUserMessage msg)
-        {
-            try
-            {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
-                //send the kill command to the instance
-                application.Kill();
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Kill command has been sent to the " + application.ApplicationName + " server.  Should be dead soon!",
-                    Color = Color.Green,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/sdZ.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
-            }
-            catch (Exception exception)
-            {
-                log.Error("Cannot kill application: " + exception.Message);
-            }
-        }
-
-        private async Task SendConsoleCommand(SocketUserMessage msg)
-        {
-            try
-            {
-                //bot reaction
-                await msg.AddReactionAsync(emoji);
-
                 //get the command to be sent
-                string command = msg.Content.Split("console ")[1];
+                string command = msg.Data.Options.First().Options.First().Value.ToString();
 
                 //send the command to the instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine(command);
-
-                //build bot response
-                var embed = new EmbedBuilder
-                {
-                    Title = "Command Sent",
-                    Description = "Command sent to the " + application.ApplicationName + " server: `" + command + "`",
-                    Color = Color.Green,
-                };
-
-                embed.WithFooter(_settings.MainSettings.BotTagline);
-                embed.WithCurrentTimestamp();
-                embed.WithThumbnailUrl("https://i.gifer.com/NZzo.gif");
-
-                //post bot response
-                await msg.ReplyAsync(embed: embed.Build());
+                return Task.CompletedTask;
             }
             catch (Exception exception)
             {
                 log.Error("Cannot send command: " + exception.Message);
+                return Task.CompletedTask;
             }
         }
 
-        private async Task GetServerInfo(bool updateExisting, SocketUserMessage msg)
+        private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg)
         {
             if (_client.ConnectionState != ConnectionState.Connected)
                 return;
-
-            //bot reaction
-            if (!updateExisting)
-                await msg.AddReactionAsync(emoji);
 
             //cast to get player count / info
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
@@ -600,47 +360,11 @@ namespace DiscordBotPlugin
 
                 _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString());
                 _config.Save(_settings);
-
-                //remove original message
-                await msg.DeleteAsync();
             }
         }
 
-        private async Task ShowHelp(SocketUserMessage msg)
+        private async Task ShowPlayerPlayTime(SocketSlashCommand msg)
         {
-            //bot reaction
-            await msg.AddReactionAsync(emoji);
-
-            //build bot response
-            var embed = new EmbedBuilder
-            {
-                Title = "Bot Help",
-                Color = Color.LightGrey,
-                ThumbnailUrl = "https://freesvg.org/img/1527172379.png"
-            };
-
-            embed.AddField("Bot Commands", "`@" + _client.CurrentUser.Username + " info` - Show server info" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " start server` - Start the Server" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " stop server` - Stop the Server" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " restart server` - Restart the Server" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " kill server` - Kill the Server" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " update server` - Update the Server" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " console` - send a command to the server, add command after `console`" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " playtime` - show playtime leaderboard" + Environment.NewLine +
-                "`@" + _client.CurrentUser.Username + " help` - Show this message" + Environment.NewLine);
-
-            embed.WithFooter(_settings.MainSettings.BotTagline);
-            embed.WithCurrentTimestamp();
-
-            //post bot reply
-            await msg.ReplyAsync(embed: embed.Build());
-        }
-
-        private async Task ShowPlayerPlayTime(SocketUserMessage msg)
-        {
-            //bot reaction
-            await msg.AddReactionAsync(emoji);
-
             //build bot response
             var embed = new EmbedBuilder
             {
@@ -656,8 +380,14 @@ namespace DiscordBotPlugin
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 
-            //post bot reply
-            await msg.ReplyAsync(embed: embed.Build());
+            
+            //get guild
+            var chnl = msg.Channel as SocketGuildChannel;
+            var guild = chnl.Guild.Id;
+            var channelID = msg.Channel.Id;
+
+            //post leaderboard
+            await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
         }
 
         //Looping task to update bot status/presence
@@ -784,8 +514,11 @@ namespace DiscordBotPlugin
 
         private async Task ButtonResonse(string Command, SocketMessageComponent arg)
         {
-            //build bot response
+            //only log if option is enabled
+            if (!_settings.MainSettings.LogButtonsAndCommands)
+                return;
 
+            //build bot response
             var embed = new EmbedBuilder();
             if (Command == "Manage")
             {
@@ -817,6 +550,45 @@ namespace DiscordBotPlugin
 
             await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             await arg.DeferAsync();
+        }
+
+        private async Task CommandResponse(string Command, SocketSlashCommand arg)
+        {
+            //only log if option is enabled
+            if (!_settings.MainSettings.LogButtonsAndCommands)
+                return;
+
+            //build bot response
+            var embed = new EmbedBuilder();
+            if (Command == "Manage")
+            {
+                embed.Title = "Manage Request";
+                embed.Description = "Manage URL Request Received";
+            }
+            else
+            {
+                embed.Title = "Server Command Sent";
+                embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
+            }
+
+            embed.Color = Color.LightGrey;
+            embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
+            embed.AddField("Requested by", arg.User.Mention, true);
+            embed.WithFooter(_settings.MainSettings.BotTagline);
+            embed.WithCurrentTimestamp();
+
+            //get guild
+            var chnl = arg.Channel as SocketGuildChannel;
+            var guild = chnl.Guild.Id;
+            var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+            var channelID = arg.Channel.Id;
+
+            if (logChannel != null)
+                channelID = logChannel.Id;
+
+            log.Debug("Guild: " + guild + " || Channel: " + channelID);
+
+            await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
         }
 
         private async void UserJoins(object sender, UserEventArgs args)
@@ -1034,6 +806,126 @@ namespace DiscordBotPlugin
             catch (Exception exception)
             {
                 log.Debug(exception.Message);
+            }
+        }
+
+        public async Task ClientReady()
+        {
+            //bot name for command
+            string botName = _client.CurrentUser.Username.ToLower();
+
+            //replace any spaces with -
+            botName = botName.Replace(' ', '-');
+
+            //log.Info("BOTNAME: " + botName);
+
+            // Let's do our global command
+            var globalCommand = new SlashCommandBuilder()
+                .WithName(botName)
+        .WithDescription("Base bot command")
+        .AddOption(new SlashCommandOptionBuilder()
+            .WithName("info")
+            .WithDescription("Create the Server Info Panel")
+            .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("start-server")
+                .WithDescription("Start the Server")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("stop-server")
+                .WithDescription("Stop the Server")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("restart-server")
+                .WithDescription("Restart the Server")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("kill-server")
+                .WithDescription("Kill the Server")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("update-server")
+                .WithDescription("Update the Server")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("show-playtime")
+                .WithDescription("Show the Playtime Leaderboard")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+            ).AddOption(new SlashCommandOptionBuilder()
+                .WithName("console")
+                .WithDescription("Send a Console Command to the Application")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
+            );
+
+            try
+            {
+                // With global commands we don't need the guild.
+                await _client.CreateGlobalApplicationCommandAsync(globalCommand.Build());
+                // Using the ready event is a simple implementation for the sake of the example. Suitable for testing and development.
+                // For a production bot, it is recommended to only run the CreateGlobalApplicationCommandAsync() once for each command.
+            }
+            catch (HttpException exception)
+            {
+                log.Error(exception.Message);
+            }
+        }
+
+        private async Task SlashCommandHandler(SocketSlashCommand command)
+        {
+            //init bool for permission check
+            bool hasServerPermission = false;
+
+            if (command.User is SocketGuildUser user)
+                //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+            if (!hasServerPermission)
+            {
+                await command.RespondAsync("You do not have permission to use this command!", ephemeral: true);
+                return;
+            }    
+
+            switch (command.Data.Options.First().Name)
+            {
+                case "info":
+                    await GetServerInfo(false, command);
+                    await command.RespondAsync("Info panel created", ephemeral: true);
+                    break;
+                case "start-server":
+                    application.Start();
+                    await CommandResponse("Start Server", command);
+                    await command.RespondAsync("Start command sent to the application",ephemeral:true);
+                    break;
+                case "stop-server":
+                    application.Stop();
+                    await CommandResponse("Stop Server", command);
+                    await command.RespondAsync("Stop command sent to the application", ephemeral: true);
+                    break;
+                case "restart-server":
+                    application.Restart();
+                    await CommandResponse("Restart Server", command);
+                    await command.RespondAsync("Restart command sent to the application", ephemeral: true);
+                    break;
+                case "kill-server":
+                    application.Restart();
+                    await CommandResponse("Kill Server", command);
+                    await command.RespondAsync("Kill command sent to the application", ephemeral: true);
+                    break;
+                case "update-server":
+                    application.Update();
+                    await CommandResponse("Update Server", command);
+                    await command.RespondAsync("Update command sent to the application", ephemeral: true);
+                    break;
+                case "show-playtime":
+                    await ShowPlayerPlayTime(command);
+                    await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
+                    break;
+                case "console":
+                    await SendConsoleCommand(command);
+                    await CommandResponse("`" + command.Data.Options.First().Options.First().Value.ToString() + "` console ", command);
+                    await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Options.First().Value.ToString() + "`", ephemeral: true);
+                    break;
             }
         }
 
