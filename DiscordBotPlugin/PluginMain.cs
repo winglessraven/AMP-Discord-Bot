@@ -8,6 +8,7 @@ using Discord.WebSocket;
 using Discord.Commands;
 using System.Linq;
 using Discord.Net;
+using System.Text.RegularExpressions;
 
 namespace DiscordBotPlugin
 {
@@ -815,9 +816,9 @@ namespace DiscordBotPlugin
             string botName = _client.CurrentUser.Username.ToLower();
 
             //replace any spaces with -
-            botName = botName.Replace(' ', '-');
+            botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
 
-            //log.Info("BOTNAME: " + botName);
+            log.Info("BOTNAME: " + botName);
 
             // Let's do our global command
             var globalCommand = new SlashCommandBuilder()
