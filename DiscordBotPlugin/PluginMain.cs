@@ -249,7 +249,7 @@ namespace DiscordBotPlugin
             //if show playtime leaderboard is enabled
             if (_settings.MainSettings.ShowPlaytimeLeaderboard)
             {
-                string leaderboard = GetPlayTimeLeaderBoard(5);
+                string leaderboard = GetPlayTimeLeaderBoard(5,false,null);
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
@@ -374,7 +374,7 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = "https://freesvg.org/img/1548372247.png"
             };
 
-            string leaderboard = GetPlayTimeLeaderBoard(15);
+            string leaderboard = GetPlayTimeLeaderBoard(15,false,null);
 
             embed.Description = leaderboard;
 
@@ -740,7 +740,7 @@ namespace DiscordBotPlugin
             return presence;
         }
 
-        private string GetPlayTimeLeaderBoard(int placesToShow)
+        private string GetPlayTimeLeaderBoard(int placesToShow,bool playerSpecific,string playerName)
         {
             //create new dictionary to hold logged time plus any current session time
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
@@ -757,28 +757,45 @@ namespace DiscordBotPlugin
 
             var sortedList = playtime.OrderByDescending(v => v.Value).ToList();
 
-            string leaderboard = "```";
-            int position = 1;
-
             //if nothing is logged yet return no data
             if (sortedList.Count == 0)
             {
                 return "```No play time logged yet```";
             }
 
-            foreach (KeyValuePair<string, TimeSpan> player in sortedList)
+            if (playerSpecific)
             {
-                //if outside places to show, stop processing
-                if (position > placesToShow)
-                    break;
-
-                leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
-                position++;
+                if(sortedList.FindAll(p=>p.Key == playerName).Count > 0)
+                {
+                    TimeSpan time = sortedList.Find(p => p.Key == playerName).Value;
+                    return "`" + time.Days + "d " + time.Hours + "h " + time.Minutes + "m " + time.Seconds + "s, position " + (sortedList.FindIndex(p => p.Key == playerName) + 1) + "`";
+                }
+                else
+                {
+                    return "```No play time logged yet```";
+                }
+                    
             }
+            else
+            {
+                string leaderboard = "```";
+                int position = 1;
 
-            leaderboard += "```";
+                foreach (KeyValuePair<string, TimeSpan> player in sortedList)
+                {
+                    //if outside places to show, stop processing
+                    if (position > placesToShow)
+                        break;
 
-            return leaderboard;
+                    leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                    position++;
+                }
+
+                leaderboard += "```";
+
+                return leaderboard;
+            }
+            
         }
 
         private void ClearAllPlayTimes()
@@ -818,53 +835,54 @@ namespace DiscordBotPlugin
             //replace any spaces with -
             botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
 
-            log.Info("BOTNAME: " + botName);
+            log.Info("Base command for bot: " + botName);
 
-            // Let's do our global command
+            List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
+
+            // global command
             var globalCommand = new SlashCommandBuilder()
                 .WithName(botName)
-        .WithDescription("Base bot command")
-        .AddOption(new SlashCommandOptionBuilder()
-            .WithName("info")
-            .WithDescription("Create the Server Info Panel")
-            .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("start-server")
-                .WithDescription("Start the Server")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("stop-server")
-                .WithDescription("Stop the Server")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("restart-server")
-                .WithDescription("Restart the Server")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("kill-server")
-                .WithDescription("Kill the Server")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("update-server")
-                .WithDescription("Update the Server")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("show-playtime")
-                .WithDescription("Show the Playtime Leaderboard")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-            ).AddOption(new SlashCommandOptionBuilder()
-                .WithName("console")
-                .WithDescription("Send a Console Command to the Application")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
-            );
+                .WithDescription("Base bot command")
+                    .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("info")
+                    .WithDescription("Create the Server Info Panel")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("start-server")
+                    .WithDescription("Start the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("stop-server")
+                    .WithDescription("Stop the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("restart-server")
+                    .WithDescription("Restart the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("kill-server")
+                    .WithDescription("Kill the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("update-server")
+                    .WithDescription("Update the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("show-playtime")
+                    .WithDescription("Show the Playtime Leaderboard")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                        .AddOption("playername",ApplicationCommandOptionType.String, "Get playtime for a specific player",isRequired:false)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("console")
+                    .WithDescription("Send a Console Command to the Application")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                        .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
+                );
 
             try
             {
-                // With global commands we don't need the guild.
-                await _client.CreateGlobalApplicationCommandAsync(globalCommand.Build());
-                // Using the ready event is a simple implementation for the sake of the example. Suitable for testing and development.
-                // For a production bot, it is recommended to only run the CreateGlobalApplicationCommandAsync() once for each command.
+                applicationCommandProperties.Add(globalCommand.Build());
+                await _client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
             }
             catch (HttpException exception)
             {
@@ -874,6 +892,22 @@ namespace DiscordBotPlugin
 
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
+            //leaderboard permissionless
+            if(command.Data.Options.First().Name.Equals("show-playtime"))
+            {
+                if (command.Data.Options.First().Options.Count > 0)
+                {
+                    string playerName = command.Data.Options.First().Options.First().Value.ToString();
+                    string playTime = GetPlayTimeLeaderBoard(1, true, playerName);
+                    await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                }
+                else
+                {
+                    await ShowPlayerPlayTime(command);
+                    await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
+                }
+                return;
+            }
             //init bool for permission check
             bool hasServerPermission = false;
 
@@ -917,10 +951,6 @@ namespace DiscordBotPlugin
                     application.Update();
                     await CommandResponse("Update Server", command);
                     await command.RespondAsync("Update command sent to the application", ephemeral: true);
-                    break;
-                case "show-playtime":
-                    await ShowPlayerPlayTime(command);
-                    await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
                     break;
                 case "console":
                     await SendConsoleCommand(command);

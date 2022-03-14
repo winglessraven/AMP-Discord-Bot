@@ -157,7 +157,7 @@
     <PostBuildEvent>xcopy "$(TargetPath)" "H:\AMPDatastore\Instances\Minecraft02\Plugins\$(ProjectName)\" /Y
 
 IF NOT EXIST "$(TargetDir)WebRoot\" GOTO NOWEB
-xcopy "$(TargetDir)WebRoot\*.*" "H:\AMPDatastore\Instances\Minecraft02\Plugins\$(ProjectName)\WebRoot\" /Y /E
+xcopy "$(TargetDir)WebRoot\*.*" "H:\AMPDatastore\Instances\Minecraft01\Plugins\$(ProjectName)\WebRoot\" /Y /E
 :NOWEB</PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
