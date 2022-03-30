@@ -179,9 +179,17 @@ namespace DiscordBotPlugin
             var embed = new EmbedBuilder
             {
                 Title = "Server Info",
-                Color = Color.LightGrey,
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
+
+            if(!_settings.ColourSettings.InfoPanelColour.Equals(""))
+            {
+                embed.Color = GetColour("Info", _settings.ColourSettings.InfoPanelColour);
+            }
+            else
+            {
+                embed.Color = Color.DarkGrey;
+            }
 
             //server online
             if (application.State == ApplicationState.Ready)
@@ -370,8 +378,7 @@ namespace DiscordBotPlugin
             var embed = new EmbedBuilder
             {
                 Title = "Play Time Leaderboard",
-                Color = Color.LightGrey,
-                ThumbnailUrl = "https://freesvg.org/img/1548372247.png"
+                ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
             string leaderboard = GetPlayTimeLeaderBoard(15,false,null);
@@ -381,6 +388,14 @@ namespace DiscordBotPlugin
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 
+            if(!_settings.ColourSettings.PlaytimeLeaderboardColour.Equals(""))
+            {
+                embed.Color = GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour);
+            }
+            else
+            {
+                embed.Color = Color.DarkGrey;
+            }
             
             //get guild
             var chnl = msg.Channel as SocketGuildChannel;
@@ -531,7 +546,85 @@ namespace DiscordBotPlugin
                     embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
                 }
 
-                embed.Color = Color.LightGrey;
+                //start command
+                if (Command.Equals("Start"))
+                {
+                    if (!_settings.ColourSettings.ServerStartColour.Equals(""))
+                    {
+                        embed.Color = GetColour("Start", _settings.ColourSettings.ServerStartColour);
+                    }
+                    else
+                    {
+                        embed.Color = Color.Green;
+                    }
+                }
+
+                //stop command
+                if (Command.Equals("Stop"))
+                {
+                    if (!_settings.ColourSettings.ServerStopColour.Equals(""))
+                    {
+                        embed.Color = GetColour("Stop", _settings.ColourSettings.ServerStopColour);
+                    }
+                    else
+                    {
+                        embed.Color = Color.Red;
+                    }
+                }
+
+                //restart command
+                if (Command.Equals("Restart"))
+                {
+                    if (!_settings.ColourSettings.ServerRestartColour.Equals(""))
+                    {
+                        embed.Color = GetColour("Restart", _settings.ColourSettings.ServerRestartColour);
+                    }
+                    else
+                    {
+                        embed.Color = Color.Orange;
+                    }
+                }
+            
+                    //kill command
+                    if (Command.Equals("Kill"))
+                    {
+                        if (!_settings.ColourSettings.ServerKillColour.Equals(""))
+                        {
+                            embed.Color = GetColour("Kill",_settings.ColourSettings.ServerKillColour);
+                        }
+                        else
+                        {
+                            embed.Color = Color.Red;
+                        }
+                    }
+
+                //update command
+                if (Command.Equals("Update"))
+                {
+                    if (!_settings.ColourSettings.ServerUpdateColour.Equals(""))
+                    {
+                        embed.Color = GetColour("Update", _settings.ColourSettings.ServerUpdateColour);
+                    }
+                    else
+                    {
+                        embed.Color = Color.Blue;
+                    }
+                }
+
+                //manage command
+                if (Command.Equals("Manage"))
+                {
+                    if (!_settings.ColourSettings.ManageLinkColour.Equals(""))
+                    {
+                        embed.Color = GetColour("Manage", _settings.ColourSettings.ManageLinkColour);
+                    }
+                    else
+                    {
+                        embed.Color = Color.Blue;
+                    }
+                }
+
+                //embed.Color = Color.LightGrey;
                 embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
                 embed.AddField("Requested by", arg.User.Mention, true);
                 embed.WithFooter(_settings.MainSettings.BotTagline);
@@ -553,6 +646,62 @@ namespace DiscordBotPlugin
             await arg.DeferAsync();
         }
 
+        private Color GetColour(string command,string hexColour)
+        {
+            try
+            {
+                //remove # if it's in the string
+                string tmp = hexColour.Replace("#", "");
+
+                //convert to uint
+                uint colourCode = uint.Parse(tmp, System.Globalization.NumberStyles.HexNumber);
+
+                return new Color(colourCode);
+            }
+            catch
+            {
+                //couldn't convert to uint, log it and revert to default colour
+                log.Info("Colour code for " + command + " is invalid, reverting to default");
+
+                if(command.Equals("Info"))
+                {
+                    return Color.DarkGrey;
+                }
+                
+                if(command.Equals("Start") || command.Equals("PlayerJoin"))
+                {
+                    return Color.Green;
+                }
+                
+                if (command.Equals("Stop") || command.Equals("Kill") || command.Equals("PlayerLeave"))
+                {
+                    return Color.Red;
+                }
+
+                if (command.Equals("Restart"))
+                {
+                    return Color.Orange;
+                }
+
+                if(command.Equals("Update") || command.Equals("Manage"))
+                {
+                    return Color.Blue;
+                }
+
+                if(command.Equals("Console"))
+                {
+                    return Color.DarkGreen;
+                }
+
+                if(command.Equals("Leaderboard"))
+                {
+                    return Color.DarkGrey;
+                }
+            }
+
+            return Color.DarkerGrey;
+        }
+
         private async Task CommandResponse(string Command, SocketSlashCommand arg)
         {
             //only log if option is enabled
@@ -572,7 +721,98 @@ namespace DiscordBotPlugin
                 embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
             }
 
-            embed.Color = Color.LightGrey;
+            //start command
+            if (Command.Equals("Start Server"))
+            {
+                if (!_settings.ColourSettings.ServerStartColour.Equals(""))
+                {
+                    embed.Color = GetColour("Start", _settings.ColourSettings.ServerStartColour);
+                }
+                else
+                {
+                    embed.Color = Color.Green;
+                }
+            }
+
+            //stop command
+            if (Command.Equals("Stop Server"))
+            {
+                if (!_settings.ColourSettings.ServerStopColour.Equals(""))
+                {
+                    embed.Color = GetColour("Stop", _settings.ColourSettings.ServerStopColour);
+                }
+                else
+                {
+                    embed.Color = Color.Red;
+                }
+            }
+
+            //restart command
+            if (Command.Equals("Restart Server"))
+            {
+                if (!_settings.ColourSettings.ServerRestartColour.Equals(""))
+                {
+                    embed.Color = GetColour("Restart", _settings.ColourSettings.ServerRestartColour);
+                }
+                else
+                {
+                    embed.Color = Color.Orange;
+                }
+            }
+
+            //kill command
+            if (Command.Equals("Kill Server"))
+            {
+                if (!_settings.ColourSettings.ServerKillColour.Equals(""))
+                {
+                    embed.Color = GetColour("Kill", _settings.ColourSettings.ServerKillColour);
+                }
+                else
+                {
+                    embed.Color = Color.Red;
+                }
+            }
+
+            //update command
+            if (Command.Equals("Update Server"))
+            {
+                if (!_settings.ColourSettings.ServerUpdateColour.Equals(""))
+                {
+                    embed.Color = GetColour("Update", _settings.ColourSettings.ServerUpdateColour);
+                }
+                else
+                {
+                    embed.Color = Color.Blue;
+                }
+            }
+
+            //manage command
+            if (Command.Equals("Manage Server"))
+            {
+                if (!_settings.ColourSettings.ManageLinkColour.Equals(""))
+                {
+                    embed.Color = GetColour("Manage", _settings.ColourSettings.ManageLinkColour);
+                }
+                else
+                {
+                    embed.Color = Color.Blue;
+                }
+            }
+
+            //console command
+            if(Command.Contains("console"))
+            {
+                if (!_settings.ColourSettings.ConsoleCommandColour.Equals(""))
+                {
+                    embed.Color = GetColour("Console", _settings.ColourSettings.ConsoleCommandColour);
+                }
+                else
+                {
+                    embed.Color = Color.DarkGreen;
+                }
+            }
+            
+            
             embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
             embed.AddField("Requested by", arg.User.Mention, true);
             embed.WithFooter(_settings.MainSettings.BotTagline);
@@ -614,7 +854,7 @@ namespace DiscordBotPlugin
                 var guildID = socketGuild.Id;
                 var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
-                    return; //doesn't exist so stop here
+                    break; //doesn't exist so stop here
 
                 string userName = args.User.Name;
 
@@ -622,7 +862,6 @@ namespace DiscordBotPlugin
                 var embed = new EmbedBuilder
                 {
                     Title = "Server Event",
-                    Color = Color.LightGrey,
                     ThumbnailUrl = _settings.MainSettings.GameImageURL
                 };
 
@@ -633,6 +872,15 @@ namespace DiscordBotPlugin
                 else
                 {
                     embed.Description = "A player joined the " + application.ApplicationName + " server.";
+                }
+
+                if(!_settings.ColourSettings.ServerPlayerJoinEventColour.Equals(""))
+                {
+                    embed.Color = GetColour("PlayerJoin", _settings.ColourSettings.ServerPlayerJoinEventColour);
+                }
+                else
+                {
+                    embed.Color = Color.Green;
                 }
 
                 embed.WithFooter(_settings.MainSettings.BotTagline);
@@ -684,7 +932,6 @@ namespace DiscordBotPlugin
                 var embed = new EmbedBuilder
                 {
                     Title = "Server Event",
-                    Color = Color.LightGrey,
                     ThumbnailUrl = _settings.MainSettings.GameImageURL
                 };
 
@@ -695,6 +942,15 @@ namespace DiscordBotPlugin
                 else
                 {
                     embed.Description = "A player left the " + application.ApplicationName + " server.";
+                }
+
+                if(!_settings.ColourSettings.ServerPlayerLeaveEventColour.Equals(""))
+                {
+                    embed.Color = GetColour("PlayerLeave", _settings.ColourSettings.ServerPlayerLeaveEventColour);
+                }
+                else
+                {
+                    embed.Color = Color.Red;
                 }
 
                 embed.WithFooter(_settings.MainSettings.BotTagline);
