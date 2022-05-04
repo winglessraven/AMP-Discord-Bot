@@ -5,7 +5,7 @@ A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that ca
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
-**Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki)**
+**Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Known-Issues)**
 
 ![Bot Info Example](https://images2.imgbox.com/69/1b/o2IQILvX_o.png "Bot Info Example")
 
