@@ -1,7 +1,7 @@
 
 # AMP Discord Bot Plugin
 
-A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status along with the ability to manage the server directly from Discord (start / stop / restart / kill / update).
+A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status in a dynamically updating info panel along with the ability to manage the server directly from Discord (start / stop / restart / kill / update) via buttons and commands.
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
@@ -34,6 +34,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 * In the plugins folder for your instance (e.g. `/home/amp/.ampdata/instances/INSTANCENAME01/Plugins/`) create a new folder called `DiscordBotPlugin` and insert the .dll file from the current [release](https://github.com/winglessraven/AMP-Discord-Bot/releases/latest "release")
 * Restart your instance with `ampinstmgr restart [INSTANCE NAME]`
 * Log in to your instance and you will see a new menu item under Configuration for the Discord Bot
+
 ![Menu Item](https://images2.imgbox.com/1f/1f/VHRYDACX_o.png "Menu Item")
 
 ## Configure your Discord Bot
@@ -60,31 +61,31 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 | ------------- | ------------------------------ |
 |Discord Bot Token|Enter your Discord bot token here|
 |Bot Tagline|This is in the footer of the messages from the bot|
-|Server Display Name|Name of the server displayed in the `@[BOT NAME]` info response|
+|Server Display Name|Name of the server displayed in the info panel|
 |Server Connection URL|URL that players can use to join the game server|
 |Server Password|If you have a server password that you want your users to see enter it here|
-|Modpack URL|This will show as a link in the `@[BOT NAME]` info command, useful if you are running a modpack or have a steam workshop collection for the server mods being used|
-|Game Image URL|A publicly accessible image to be shown in the `@[BOT NAME]` info response|
+|Modpack URL|This will show as a link in the info panel, useful if you are running a modpack or have a steam workshop collection for the server mods being used|
+|Game Image URL|A publicly accessible image to be shown in the info panel|
 |Valid Player Count|Set to true if the server has a valid player count, this will determine if the online count is shown in Discord|
 |Bot Activated|If the bot should be activated|
 |Bot Refresh Interval|How often, in seconds, the bot should update the presence and info message. Recommended minimum 30 seconds otherwise requests to Discord could be throttled|
 |Restrict Functions to Discord Role|If server commands (start/stop/restart/kill/update) should be restricted to a Discord Role|
-|Discord Role Name|Role name associated with the permissions for the previous setting.|
+|Discord Role Name|Role name associated with the permissions for the previous setting|
 |Log Button Presses and Commands|Toggle if button presses and command use should be logged|
-|Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info display.|
+|Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info panel|
 |Post Join and Leave Messages|If the bot should post user join and leave events to a Discord channel|
 |Post Join and Leave Messages Channel|Channel name for the bot to post join and leave events to (only if enabled)|
 |Base Management URL|Address to be used to manage instances.  Should be in the format of `amp.domain.com` or your external IP address|
-|Display Start Button|Toggle the start button on the info message|
-|Display Stop Button|Toggle the stop button on the info message|
-|Display Restart Button|Toggle the restart button on the info message|
-|Display Kill Button|Toggle the kill button on the info message|
-|Display Update Button|Toggle the update button on the info message|
-|Display Manage Button|Toggle the manage button on the info message|
+|Display Start Button|Toggle the start button on the info panel|
+|Display Stop Button|Toggle the stop button on the info panel|
+|Display Restart Button|Toggle the restart button on the info panel|
+|Display Kill Button|Toggle the kill button on the info panel|
+|Display Update Button|Toggle the update button on the info panel|
+|Display Manage Button|Toggle the manage button on the info panel|
 |Display Online Player List|Show a list of online players in the info panel (if supported)|
 |Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)|
-|Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers` as variables|
-|Display Playtime Leaderboard|Toggle the playtime leaderboard on the info message|
+|Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
+|Display Playtime Leaderboard|Toggle the playtime leaderboard on the info panel|
 
 ## AMP Discord Bot Colours
 The `Discord Bot Colours` section give you the ability to change the colour of your embedded messages in Discord.  For each option you want to change insert the hex colour code required.
