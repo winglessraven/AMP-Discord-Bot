@@ -9,6 +9,8 @@ using Discord.Commands;
 using System.Linq;
 using Discord.Net;
 using System.Text.RegularExpressions;
+using System.IO;
+using System.Text;
 
 namespace DiscordBotPlugin
 {
@@ -1281,7 +1283,40 @@ namespace DiscordBotPlugin
                     else
                     {
                         string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
-                        await command.RespondAsync(playTime, ephemeral: true);
+                        if (playTime.Length > 2000)
+                        {
+                            string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
+                            try
+                            {
+                                playTime = playTime.Replace("```", "");
+                                using (FileStream fileStream = File.Create(path))
+                                {
+                                    byte[] text = new UTF8Encoding(true).GetBytes(playTime);
+                                    fileStream.Write(text,0,text.Length);
+                                }
+                            }
+                            catch(Exception ex)
+                            {
+                                log.Error("Error creating file: " + ex.Message);
+                            }
+                            
+                            await command.RespondWithFileAsync(path,ephemeral: true);
+
+                            try
+                            {
+                                File.Delete(path);
+                            }
+                            catch(Exception ex)
+                            {
+                                log.Error("Error deleting file: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            await command.RespondAsync(playTime, ephemeral: true);
+                        }
+                        
+                        //await command.User.SendMessageAsync(playTime);
                     }
                     break;
             }
