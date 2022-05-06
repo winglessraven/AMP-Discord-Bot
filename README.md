@@ -20,6 +20,7 @@ A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that ca
 | `/[BOT NAME] update-server`   | Update the Server |
 | `/[BOT NAME] console [command]`   | Send a command to the server |
 | `/[BOT NAME] playtime`   | Show playtime leaderboard |
+| `/[BOT NAME] full-playtime-list`   | Show full playtime list with last seen value |
 # Configuration Steps
 ## Configure AMP
 Before the plugin can be used you need to configure AMP in a specific way.  **NOTE: The plugin cannot be used on ADS. It can only run on non-ADS instances.**

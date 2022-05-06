@@ -257,7 +257,7 @@ namespace DiscordBotPlugin
             //if show playtime leaderboard is enabled
             if (_settings.MainSettings.ShowPlaytimeLeaderboard)
             {
-                string leaderboard = GetPlayTimeLeaderBoard(5,false,null);
+                string leaderboard = GetPlayTimeLeaderBoard(5,false,null,false);
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
@@ -381,7 +381,7 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
-            string leaderboard = GetPlayTimeLeaderBoard(15,false,null);
+            string leaderboard = GetPlayTimeLeaderBoard(15,false,null,false);
 
             embed.Description = leaderboard;
 
@@ -843,6 +843,7 @@ namespace DiscordBotPlugin
             if (!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
             {
                 _settings.MainSettings.PlayTime.Add(args.User.Name, TimeSpan.Zero);
+                _settings.MainSettings.LastSeen.Add(args.User.Name, DateTime.Now);
                 _config.Save(_settings);
             }
 
@@ -904,6 +905,7 @@ namespace DiscordBotPlugin
 
                 //update main playtime list
                 _settings.MainSettings.PlayTime[args.User.Name] += sessionPlayTime;
+                _settings.MainSettings.LastSeen[args.User.Name] = DateTime.Now;
                 _config.Save(_settings);
 
                 //remove from 'live' list
@@ -996,7 +998,7 @@ namespace DiscordBotPlugin
             return presence;
         }
 
-        private string GetPlayTimeLeaderBoard(int placesToShow,bool playerSpecific,string playerName)
+        private string GetPlayTimeLeaderBoard(int placesToShow,bool playerSpecific,string playerName,bool fullList)
         {
             //create new dictionary to hold logged time plus any current session time
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
@@ -1024,7 +1026,8 @@ namespace DiscordBotPlugin
                 if(sortedList.FindAll(p=>p.Key == playerName).Count > 0)
                 {
                     TimeSpan time = sortedList.Find(p => p.Key == playerName).Value;
-                    return "`" + time.Days + "d " + time.Hours + "h " + time.Minutes + "m " + time.Seconds + "s, position " + (sortedList.FindIndex(p => p.Key == playerName) + 1) + "`";
+
+                    return "`" + time.Days + "d " + time.Hours + "h " + time.Minutes + "m " + time.Seconds + "s, position " + (sortedList.FindIndex(p => p.Key == playerName) + 1) + ", last seen " + GetLastSeen(playerName) + "`";
                 }
                 else
                 {
@@ -1037,13 +1040,26 @@ namespace DiscordBotPlugin
                 string leaderboard = "```";
                 int position = 1;
 
+                if(fullList)
+                {
+                    leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", "Pos", "Player Name", "Play Time", "Last Seen") + Environment.NewLine;
+                }
+                
+
                 foreach (KeyValuePair<string, TimeSpan> player in sortedList)
                 {
                     //if outside places to show, stop processing
                     if (position > placesToShow)
                         break;
 
-                    leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                    if(fullList)
+                    {
+                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds),GetLastSeen(player.Key)) + Environment.NewLine;
+                    }
+                    else
+                    {
+                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                    }                    
                     position++;
                 }
 
@@ -1052,6 +1068,42 @@ namespace DiscordBotPlugin
                 return leaderboard;
             }
             
+        }
+
+        private string GetLastSeen(string playerName)
+        {
+            IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+            bool playerOnline = false;
+            foreach (SimpleUser user in hasSimpleUserList.Users)
+            {
+                if (user.Name == playerName)
+                {
+                    playerOnline = true;
+                }
+            }
+
+            string lastSeen;
+
+            if (playerOnline)
+            {
+                lastSeen = DateTime.Now.ToString("dddd, dd MMMM yyyy HH:mm:ss");
+            }
+            else
+            {
+                try
+                {
+                    lastSeen = _settings.MainSettings.LastSeen[playerName].ToString("dddd, dd MMMM yyyy HH:mm:ss");
+                }
+                catch(KeyNotFoundException)
+                {
+                    //player not found in list
+                    lastSeen = "N/A";
+                }
+
+                
+            }
+
+            return lastSeen;
         }
 
         private void ClearAllPlayTimes()
@@ -1073,6 +1125,7 @@ namespace DiscordBotPlugin
 
                     //update main playtime list
                     _settings.MainSettings.PlayTime[playerPlayTime.PlayerName] += sessionPlayTime;
+                    _settings.MainSettings.LastSeen[playerPlayTime.PlayerName] = DateTime.Now;
                     _config.Save(_settings);
                 }
                 playerPlayTimes.Clear();
@@ -1133,6 +1186,11 @@ namespace DiscordBotPlugin
                     .WithDescription("Send a Console Command to the Application")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                         .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
+                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("full-playtime-list")
+                    .WithDescription("Full Playtime List")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                        .AddOption("playername",ApplicationCommandOptionType.String, "Get info for a specific player", isRequired:false)
                 );
 
             try
@@ -1154,7 +1212,7 @@ namespace DiscordBotPlugin
                 if (command.Data.Options.First().Options.Count > 0)
                 {
                     string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                    string playTime = GetPlayTimeLeaderBoard(1, true, playerName);
+                    string playTime = GetPlayTimeLeaderBoard(1, true, playerName,false);
                     await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                 }
                 else
@@ -1212,6 +1270,19 @@ namespace DiscordBotPlugin
                     await SendConsoleCommand(command);
                     await CommandResponse("`" + command.Data.Options.First().Options.First().Value.ToString() + "` console ", command);
                     await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Options.First().Value.ToString() + "`", ephemeral: true);
+                    break;
+                case "full-playtime-list":
+                    if (command.Data.Options.First().Options.Count > 0)
+                    {
+                        string playerName = command.Data.Options.First().Options.First().Value.ToString();
+                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName,true);
+                        await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                    }
+                    else
+                    {
+                        string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
+                        await command.RespondAsync(playTime, ephemeral: true);
+                    }
                     break;
             }
         }
