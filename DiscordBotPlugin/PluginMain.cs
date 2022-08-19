@@ -635,7 +635,7 @@ namespace DiscordBotPlugin
                 //get guild
                 var chnl = arg.Message.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
-                var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+                var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
                 var channelID = arg.Message.Channel.Id;
 
                 if (logChannel != null)
@@ -823,7 +823,7 @@ namespace DiscordBotPlugin
             //get guild
             var chnl = arg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
-            var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+            var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
             var channelID = arg.Channel.Id;
 
             if (logChannel != null)
@@ -855,7 +855,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     break; //doesn't exist so stop here
 
@@ -926,7 +926,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     return; //doesn't exist so stop here
 
