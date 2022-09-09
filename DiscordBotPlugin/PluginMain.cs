@@ -89,6 +89,7 @@ namespace DiscordBotPlugin
 
         public override void PostInit()
         {
+
             //check if the bot is turned on
             if (_settings.MainSettings.BotActive)
             {
@@ -166,7 +167,7 @@ namespace DiscordBotPlugin
             }
         }
 
-        private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg)
+        private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg,bool Buttonless)
         {
             if (_client.ConnectionState != ConnectionState.Connected)
                 return;
@@ -342,7 +343,22 @@ namespace DiscordBotPlugin
                             await existingMsg.ModifyAsync(x =>
                             {
                                 x.Embed = embed.Build();
-                                x.Components = builder.Build();
+                                if(split.Length > 3)
+                                {
+                                    if (split[3].ToString().Equals("True"))
+                                    {
+                                        //buttonless panel - do not build buttons
+                                    }
+                                    else
+                                    {
+                                        x.Components = builder.Build();
+                                    }
+                                }
+                                else
+                                {
+                                    //panel created before buttonless option
+                                    x.Components = builder.Build();
+                                }                                
                             });
                         }
                         else
@@ -365,11 +381,19 @@ namespace DiscordBotPlugin
                 var channelID = msg.Channel.Id;
 
                 //post bot reply
-                var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
+                if(Buttonless)
+                {
+                    var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
+                    log.Debug("Message ID: " + message.Id.ToString());
+                    _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                }
+                else
+                {
+                    var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
+                    log.Debug("Message ID: " + message.Id.ToString());
+                    _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                }
 
-                log.Debug("Message ID: " + message.Id.ToString());
-
-                _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString());
                 _config.Save(_settings);
             }
         }
@@ -464,7 +488,7 @@ namespace DiscordBotPlugin
                     //update the embed if it exists
                     if (_settings.MainSettings.InfoMessageDetails != null)
                         if (_settings.MainSettings.InfoMessageDetails.Count > 0)
-                            _ = GetServerInfo(true, null);
+                            _ = GetServerInfo(true, null,false);
 
                 }
                 catch (System.Net.WebException exception)
@@ -635,7 +659,7 @@ namespace DiscordBotPlugin
                 //get guild
                 var chnl = arg.Message.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
-                var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+                var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
                 var channelID = arg.Message.Channel.Id;
 
                 if (logChannel != null)
@@ -823,7 +847,7 @@ namespace DiscordBotPlugin
             //get guild
             var chnl = arg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
-            var logChannel = _client.GetGuild(guild).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+            var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
             var channelID = arg.Channel.Id;
 
             if (logChannel != null)
@@ -855,7 +879,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     break; //doesn't exist so stop here
 
@@ -926,7 +950,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.SingleOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     return; //doesn't exist so stop here
 
@@ -1158,6 +1182,7 @@ namespace DiscordBotPlugin
                     .WithName("info")
                     .WithDescription("Create the Server Info Panel")
                     .WithType(ApplicationCommandOptionType.SubCommand)
+                        .AddOption("nobuttons",ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?",isRequired:false)
                     ).AddOption(new SlashCommandOptionBuilder()
                     .WithName("start-server")
                     .WithDescription("Start the Server")
@@ -1198,6 +1223,7 @@ namespace DiscordBotPlugin
             try
             {
                 applicationCommandProperties.Add(globalCommand.Build());
+
                 await _client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
             }
             catch (HttpException exception)
@@ -1240,7 +1266,15 @@ namespace DiscordBotPlugin
             switch (command.Data.Options.First().Name)
             {
                 case "info":
-                    await GetServerInfo(false, command);
+                    if(command.Data.Options.First().Options.Count > 0)
+                    {
+                        bool buttonless = Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
+                        await GetServerInfo(false, command, buttonless);
+                    }
+                    else
+                    {
+                        await GetServerInfo(false, command,false);
+                    }
                     await command.RespondAsync("Info panel created", ephemeral: true);
                     break;
                 case "start-server":
