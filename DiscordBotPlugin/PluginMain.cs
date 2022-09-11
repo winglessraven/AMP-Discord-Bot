@@ -990,7 +990,10 @@ namespace DiscordBotPlugin
         private async Task ManageServer(SocketMessageComponent arg)
         {
             var builder = new ComponentBuilder();
-            builder.WithButton("Manage Server", style: ButtonStyle.Link, url: "https://" + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
+            string managementProtocol = "http://";
+            if (_settings.MainSettings.ManagementURLSSL)
+                managementProtocol = "https://";
+            builder.WithButton("Manage Server", style: ButtonStyle.Link, url: managementProtocol + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
         }
 
