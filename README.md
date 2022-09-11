@@ -7,6 +7,10 @@ A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that ca
 
 **Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Known-Issues)**
 
+**If you appreciate my work on this plugin, feel free to buy me a beer to keep me fueled up [here](https://www.buymeacoffee.com/winglessraven)**
+
+
+
 ![Bot Info Example](https://images2.imgbox.com/69/1b/o2IQILvX_o.png "Bot Info Example")
 
 # Command Reference
