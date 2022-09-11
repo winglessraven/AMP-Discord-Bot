@@ -62,6 +62,9 @@ namespace DiscordBotPlugin
             [WebSetting("Base Management URL", "Address used to manage instances, should be in the format of amp.domain.com or your external IP if you do not use a domain", false)]
             public string ManagementURL = "";
 
+            [WebSetting("Base Management URL SSL (https)", "Enable https for the manage URL. Link will be http if disabled", false)]
+            public bool ManagementURLSSL = false;
+
             [WebSetting("Display Start Button", "Toggle the start button visibility on the info panel", false)]
             public bool ShowStartButton = false;
 
