@@ -77,9 +77,9 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Restrict Functions to Discord Role|If server commands (start/stop/restart/kill/update) should be restricted to a Discord Role|
 |Discord Role Name|Role name associated with the permissions for the previous setting|
 |Log Button Presses and Commands|Toggle if button presses and command use should be logged|
-|Button Log Channel Name|Name of the channel to log button presses in. If blank it will be logged to the same channel as the info panel|
+|Button Log Channel (Name OR ID)|Name or ID of the channel to log button presses in. If blank it will be logged to the same channel as the info panel|
 |Post Join and Leave Messages|If the bot should post user join and leave events to a Discord channel|
-|Post Join and Leave Messages Channel|Channel name for the bot to post join and leave events to (only if enabled)|
+|Post Join and Leave Messages Channel (Name OR ID)|Channel name or ID for the bot to post join and leave events to (only if enabled)|
 |Base Management URL|Address to be used to manage instances.  Should be in the format of `amp.domain.com` or your external IP address|
 |Display Start Button|Toggle the start button on the info panel|
 |Display Stop Button|Toggle the stop button on the info panel|
