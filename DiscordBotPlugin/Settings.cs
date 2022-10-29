@@ -48,7 +48,7 @@ namespace DiscordBotPlugin
             [WebSetting("Log Button Presses and Commands", "Log when buttons are pressed and commands are used", false)]
             public bool LogButtonsAndCommands = false;
 
-            [WebSetting("Button/Command Log Channel Name", "Channel name of where to log button presses and commands. If left blank response will be the same channel as the info panel display", false)]
+            [WebSetting("Button/Command Log Channel (Name OR ID)", "Channel name or ID of where to log button presses and commands. If left blank response will be the same channel as the info panel display", false)]
             public string ButtonResponseChannel = "";
 
             public List<string> InfoMessageDetails = new List<string>();
@@ -56,7 +56,7 @@ namespace DiscordBotPlugin
             [WebSetting("Post Join and Leave Messages", "Post player join and leave events to a Discord channel", false)]
             public bool PostPlayerEvents = false;
 
-            [WebSetting("Post Join and Leave Messages Channel Name", "Channel name to post player join and leave events", false)]
+            [WebSetting("Post Join and Leave Messages Channel (Name OR ID)", "Channel name or ID to post player join and leave events", false)]
             public string PostPlayerEventsChannel = "";
 
             [WebSetting("Base Management URL", "Address used to manage instances, should be in the format of amp.domain.com or your external IP if you do not use a domain", false)]

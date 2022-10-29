@@ -659,7 +659,7 @@ namespace DiscordBotPlugin
                 //get guild
                 var chnl = arg.Message.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
-                var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+                var logChannel = GetEventChannel(guild,_settings.MainSettings.ButtonResponseChannel);
                 var channelID = arg.Message.Channel.Id;
 
                 if (logChannel != null)
@@ -847,7 +847,7 @@ namespace DiscordBotPlugin
             //get guild
             var chnl = arg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
-            var logChannel = _client.GetGuild(guild).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.ButtonResponseChannel);
+            var logChannel = GetEventChannel(guild,_settings.MainSettings.ButtonResponseChannel);
             var channelID = arg.Channel.Id;
 
             if (logChannel != null)
@@ -879,7 +879,8 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.PostPlayerEventsChannel);
+
                 if (eventChannel == null)
                     break; //doesn't exist so stop here
 
@@ -950,7 +951,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == _settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = GetEventChannel(guildID,_settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     return; //doesn't exist so stop here
 
@@ -1364,6 +1365,23 @@ namespace DiscordBotPlugin
             public string PlayerName { get; set; }
             public DateTime JoinTime { get; set; }
             public DateTime LeaveTime { get; set; }
+        }
+
+        private SocketGuildChannel GetEventChannel(ulong guildID, string channel)
+        {
+            SocketGuildChannel eventChannel;
+
+            //try by ID first
+            try
+            {
+                eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Id == Convert.ToUInt64(channel));
+            }
+            catch
+            {
+                eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == channel);
+            }
+
+            return eventChannel;
         }
     }
 }
