@@ -146,14 +146,22 @@ namespace DiscordBotPlugin
             return Task.CompletedTask;
         }
 
-    
+
 
         private Task SendConsoleCommand(SocketSlashCommand msg)
         {
             try
             {
+                string command = "";
                 //get the command to be sent
-                string command = msg.Data.Options.First().Options.First().Value.ToString();
+                if(_settings.MainSettings.RemoveBotName)
+                {
+                    command = msg.Data.Options.First().Value.ToString();
+                }
+                else
+                {
+                    command = msg.Data.Options.First().Options.First().Value.ToString();
+                }
 
                 //send the command to the instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
@@ -167,7 +175,7 @@ namespace DiscordBotPlugin
             }
         }
 
-        private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg,bool Buttonless)
+        private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg, bool Buttonless)
         {
             if (_client.ConnectionState != ConnectionState.Connected)
                 return;
@@ -185,7 +193,7 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
-            if(!_settings.ColourSettings.InfoPanelColour.Equals(""))
+            if (!_settings.ColourSettings.InfoPanelColour.Equals(""))
             {
                 embed.Color = GetColour("Info", _settings.ColourSettings.InfoPanelColour);
             }
@@ -260,7 +268,7 @@ namespace DiscordBotPlugin
             //if show playtime leaderboard is enabled
             if (_settings.MainSettings.ShowPlaytimeLeaderboard)
             {
-                string leaderboard = GetPlayTimeLeaderBoard(5,false,null,false);
+                string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false);
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
@@ -343,7 +351,7 @@ namespace DiscordBotPlugin
                             await existingMsg.ModifyAsync(x =>
                             {
                                 x.Embed = embed.Build();
-                                if(split.Length > 3)
+                                if (split.Length > 3)
                                 {
                                     if (split[3].ToString().Equals("True"))
                                     {
@@ -358,7 +366,7 @@ namespace DiscordBotPlugin
                                 {
                                     //panel created before buttonless option
                                     x.Components = builder.Build();
-                                }                                
+                                }
                             });
                         }
                         else
@@ -381,7 +389,7 @@ namespace DiscordBotPlugin
                 var channelID = msg.Channel.Id;
 
                 //post bot reply
-                if(Buttonless)
+                if (Buttonless)
                 {
                     var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
                     log.Debug("Message ID: " + message.Id.ToString());
@@ -407,14 +415,14 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
-            string leaderboard = GetPlayTimeLeaderBoard(15,false,null,false);
+            string leaderboard = GetPlayTimeLeaderBoard(15, false, null, false);
 
             embed.Description = leaderboard;
 
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 
-            if(!_settings.ColourSettings.PlaytimeLeaderboardColour.Equals(""))
+            if (!_settings.ColourSettings.PlaytimeLeaderboardColour.Equals(""))
             {
                 embed.Color = GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour);
             }
@@ -422,7 +430,7 @@ namespace DiscordBotPlugin
             {
                 embed.Color = Color.DarkGrey;
             }
-            
+
             //get guild
             var chnl = msg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
@@ -488,7 +496,7 @@ namespace DiscordBotPlugin
                     //update the embed if it exists
                     if (_settings.MainSettings.InfoMessageDetails != null)
                         if (_settings.MainSettings.InfoMessageDetails.Count > 0)
-                            _ = GetServerInfo(true, null,false);
+                            _ = GetServerInfo(true, null, false);
 
                 }
                 catch (System.Net.WebException exception)
@@ -610,19 +618,19 @@ namespace DiscordBotPlugin
                         embed.Color = Color.Orange;
                     }
                 }
-            
-                    //kill command
-                    if (Command.Equals("Kill"))
+
+                //kill command
+                if (Command.Equals("Kill"))
+                {
+                    if (!_settings.ColourSettings.ServerKillColour.Equals(""))
                     {
-                        if (!_settings.ColourSettings.ServerKillColour.Equals(""))
-                        {
-                            embed.Color = GetColour("Kill",_settings.ColourSettings.ServerKillColour);
-                        }
-                        else
-                        {
-                            embed.Color = Color.Red;
-                        }
+                        embed.Color = GetColour("Kill", _settings.ColourSettings.ServerKillColour);
                     }
+                    else
+                    {
+                        embed.Color = Color.Red;
+                    }
+                }
 
                 //update command
                 if (Command.Equals("Update"))
@@ -659,7 +667,7 @@ namespace DiscordBotPlugin
                 //get guild
                 var chnl = arg.Message.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
-                var logChannel = GetEventChannel(guild,_settings.MainSettings.ButtonResponseChannel);
+                var logChannel = GetEventChannel(guild, _settings.MainSettings.ButtonResponseChannel);
                 var channelID = arg.Message.Channel.Id;
 
                 if (logChannel != null)
@@ -672,7 +680,7 @@ namespace DiscordBotPlugin
             await arg.DeferAsync();
         }
 
-        private Color GetColour(string command,string hexColour)
+        private Color GetColour(string command, string hexColour)
         {
             try
             {
@@ -689,16 +697,16 @@ namespace DiscordBotPlugin
                 //couldn't convert to uint, log it and revert to default colour
                 log.Info("Colour code for " + command + " is invalid, reverting to default");
 
-                if(command.Equals("Info"))
+                if (command.Equals("Info"))
                 {
                     return Color.DarkGrey;
                 }
-                
-                if(command.Equals("Start") || command.Equals("PlayerJoin"))
+
+                if (command.Equals("Start") || command.Equals("PlayerJoin"))
                 {
                     return Color.Green;
                 }
-                
+
                 if (command.Equals("Stop") || command.Equals("Kill") || command.Equals("PlayerLeave"))
                 {
                     return Color.Red;
@@ -709,17 +717,17 @@ namespace DiscordBotPlugin
                     return Color.Orange;
                 }
 
-                if(command.Equals("Update") || command.Equals("Manage"))
+                if (command.Equals("Update") || command.Equals("Manage"))
                 {
                     return Color.Blue;
                 }
 
-                if(command.Equals("Console"))
+                if (command.Equals("Console"))
                 {
                     return Color.DarkGreen;
                 }
 
-                if(command.Equals("Leaderboard"))
+                if (command.Equals("Leaderboard"))
                 {
                     return Color.DarkGrey;
                 }
@@ -826,7 +834,7 @@ namespace DiscordBotPlugin
             }
 
             //console command
-            if(Command.Contains("console"))
+            if (Command.Contains("console"))
             {
                 if (!_settings.ColourSettings.ConsoleCommandColour.Equals(""))
                 {
@@ -837,8 +845,8 @@ namespace DiscordBotPlugin
                     embed.Color = Color.DarkGreen;
                 }
             }
-            
-            
+
+
             embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
             embed.AddField("Requested by", arg.User.Mention, true);
             embed.WithFooter(_settings.MainSettings.BotTagline);
@@ -847,7 +855,7 @@ namespace DiscordBotPlugin
             //get guild
             var chnl = arg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
-            var logChannel = GetEventChannel(guild,_settings.MainSettings.ButtonResponseChannel);
+            var logChannel = GetEventChannel(guild, _settings.MainSettings.ButtonResponseChannel);
             var channelID = arg.Channel.Id;
 
             if (logChannel != null)
@@ -902,7 +910,7 @@ namespace DiscordBotPlugin
                     embed.Description = "A player joined the " + application.ApplicationName + " server.";
                 }
 
-                if(!_settings.ColourSettings.ServerPlayerJoinEventColour.Equals(""))
+                if (!_settings.ColourSettings.ServerPlayerJoinEventColour.Equals(""))
                 {
                     embed.Color = GetColour("PlayerJoin", _settings.ColourSettings.ServerPlayerJoinEventColour);
                 }
@@ -951,7 +959,7 @@ namespace DiscordBotPlugin
             foreach (SocketGuild socketGuild in _client.Guilds)
             {
                 var guildID = socketGuild.Id;
-                var eventChannel = GetEventChannel(guildID,_settings.MainSettings.PostPlayerEventsChannel);
+                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
                     return; //doesn't exist so stop here
 
@@ -973,7 +981,7 @@ namespace DiscordBotPlugin
                     embed.Description = "A player left the " + application.ApplicationName + " server.";
                 }
 
-                if(!_settings.ColourSettings.ServerPlayerLeaveEventColour.Equals(""))
+                if (!_settings.ColourSettings.ServerPlayerLeaveEventColour.Equals(""))
                 {
                     embed.Color = GetColour("PlayerLeave", _settings.ColourSettings.ServerPlayerLeaveEventColour);
                 }
@@ -1028,7 +1036,7 @@ namespace DiscordBotPlugin
             return presence;
         }
 
-        private string GetPlayTimeLeaderBoard(int placesToShow,bool playerSpecific,string playerName,bool fullList)
+        private string GetPlayTimeLeaderBoard(int placesToShow, bool playerSpecific, string playerName, bool fullList)
         {
             //create new dictionary to hold logged time plus any current session time
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
@@ -1053,7 +1061,7 @@ namespace DiscordBotPlugin
 
             if (playerSpecific)
             {
-                if(sortedList.FindAll(p=>p.Key == playerName).Count > 0)
+                if (sortedList.FindAll(p => p.Key == playerName).Count > 0)
                 {
                     TimeSpan time = sortedList.Find(p => p.Key == playerName).Value;
 
@@ -1063,18 +1071,18 @@ namespace DiscordBotPlugin
                 {
                     return "```No play time logged yet```";
                 }
-                    
+
             }
             else
             {
                 string leaderboard = "```";
                 int position = 1;
 
-                if(fullList)
+                if (fullList)
                 {
                     leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", "Pos", "Player Name", "Play Time", "Last Seen") + Environment.NewLine;
                 }
-                
+
 
                 foreach (KeyValuePair<string, TimeSpan> player in sortedList)
                 {
@@ -1082,14 +1090,14 @@ namespace DiscordBotPlugin
                     if (position > placesToShow)
                         break;
 
-                    if(fullList)
+                    if (fullList)
                     {
-                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds),GetLastSeen(player.Key)) + Environment.NewLine;
+                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds), GetLastSeen(player.Key)) + Environment.NewLine;
                     }
                     else
                     {
                         leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
-                    }                    
+                    }
                     position++;
                 }
 
@@ -1097,7 +1105,7 @@ namespace DiscordBotPlugin
 
                 return leaderboard;
             }
-            
+
         }
 
         private string GetLastSeen(string playerName)
@@ -1124,13 +1132,13 @@ namespace DiscordBotPlugin
                 {
                     lastSeen = _settings.MainSettings.LastSeen[playerName].ToString("dddd, dd MMMM yyyy HH:mm:ss");
                 }
-                catch(KeyNotFoundException)
+                catch (KeyNotFoundException)
                 {
                     //player not found in list
                     lastSeen = "N/A";
                 }
 
-                
+
             }
 
             return lastSeen;
@@ -1168,65 +1176,118 @@ namespace DiscordBotPlugin
 
         public async Task ClientReady()
         {
-            //bot name for command
-            string botName = _client.CurrentUser.Username.ToLower();
-
-            //replace any spaces with -
-            botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
-
-            log.Info("Base command for bot: " + botName);
-
             List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
+            List<SlashCommandBuilder> commandList = new List<SlashCommandBuilder>();
 
-            // global command
-            var globalCommand = new SlashCommandBuilder()
-                .WithName(botName)
-                .WithDescription("Base bot command")
-                    .AddOption(new SlashCommandOptionBuilder()
+            if (_settings.MainSettings.RemoveBotName)
+            {
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("info")
                     .WithDescription("Create the Server Info Panel")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("nobuttons",ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?",isRequired:false)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("start-server")
-                    .WithDescription("Start the Server")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithDescription("Start the Server"));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("stop-server")
-                    .WithDescription("Stop the Server")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithDescription("Stop the Server"));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("restart-server")
-                    .WithDescription("Restart the Server")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithDescription("Restart the Server"));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("kill-server")
-                    .WithDescription("Kill the Server")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithDescription("Kill the Server"));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("update-server")
-                    .WithDescription("Update the Server")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .WithDescription("Update the Server"));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("show-playtime")
                     .WithDescription("Show the Playtime Leaderboard")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("playername",ApplicationCommandOptionType.String, "Get playtime for a specific player",isRequired:false)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("console")
                     .WithDescription("Send a Console Command to the Application")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
-                    ).AddOption(new SlashCommandOptionBuilder()
+                    .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true));
+
+                commandList.Add(new SlashCommandBuilder()
                     .WithName("full-playtime-list")
                     .WithDescription("Full Playtime List")
-                    .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("playername",ApplicationCommandOptionType.String, "Get info for a specific player", isRequired:false)
-                );
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+            }
+            else
+            {
+                //bot name for command
+                string botName = _client.CurrentUser.Username.ToLower();
+
+                //replace any spaces with -
+                botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
+
+                log.Info("Base command for bot: " + botName);
+
+                // global command
+                commandList.Add(new SlashCommandBuilder()
+                    .WithName(botName)
+                    .WithDescription("Base bot command")
+                        .AddOption(new SlashCommandOptionBuilder()
+                        .WithName("info")
+                        .WithDescription("Create the Server Info Panel")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                            .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("start-server")
+                        .WithDescription("Start the Server")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("stop-server")
+                        .WithDescription("Stop the Server")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("restart-server")
+                        .WithDescription("Restart the Server")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("kill-server")
+                        .WithDescription("Kill the Server")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("update-server")
+                        .WithDescription("Update the Server")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("show-playtime")
+                        .WithDescription("Show the Playtime Leaderboard")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                            .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("console")
+                        .WithDescription("Send a Console Command to the Application")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                            .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
+                        ).AddOption(new SlashCommandOptionBuilder()
+                        .WithName("full-playtime-list")
+                        .WithDescription("Full Playtime List")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                            .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false)
+                        )
+                    );
+            }
+
 
             try
             {
-                applicationCommandProperties.Add(globalCommand.Build());
+                foreach (SlashCommandBuilder command in commandList)
+                {
+                    applicationCommandProperties.Add(command.Build());
+                }
+
+                //applicationCommandProperties.Add(globalCommand.Build());
 
                 await _client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
             }
@@ -1238,125 +1299,254 @@ namespace DiscordBotPlugin
 
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
-            //leaderboard permissionless
-            if(command.Data.Options.First().Name.Equals("show-playtime"))
+            //using bot name base command
+            if (!_settings.MainSettings.RemoveBotName)
             {
-                if (command.Data.Options.First().Options.Count > 0)
+                //leaderboard permissionless
+                if (command.Data.Options.First().Name.Equals("show-playtime"))
                 {
-                    string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                    string playTime = GetPlayTimeLeaderBoard(1, true, playerName,false);
-                    await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
-                }
-                else
-                {
-                    await ShowPlayerPlayTime(command);
-                    await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
-                }
-                return;
-            }
-            //init bool for permission check
-            bool hasServerPermission = false;
-
-            if (command.User is SocketGuildUser user)
-                //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
-
-            if (!hasServerPermission)
-            {
-                await command.RespondAsync("You do not have permission to use this command!", ephemeral: true);
-                return;
-            }    
-
-            switch (command.Data.Options.First().Name)
-            {
-                case "info":
-                    if(command.Data.Options.First().Options.Count > 0)
-                    {
-                        bool buttonless = Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
-                        await GetServerInfo(false, command, buttonless);
-                    }
-                    else
-                    {
-                        await GetServerInfo(false, command,false);
-                    }
-                    await command.RespondAsync("Info panel created", ephemeral: true);
-                    break;
-                case "start-server":
-                    application.Start();
-                    await CommandResponse("Start Server", command);
-                    await command.RespondAsync("Start command sent to the application",ephemeral:true);
-                    break;
-                case "stop-server":
-                    application.Stop();
-                    await CommandResponse("Stop Server", command);
-                    await command.RespondAsync("Stop command sent to the application", ephemeral: true);
-                    break;
-                case "restart-server":
-                    application.Restart();
-                    await CommandResponse("Restart Server", command);
-                    await command.RespondAsync("Restart command sent to the application", ephemeral: true);
-                    break;
-                case "kill-server":
-                    application.Restart();
-                    await CommandResponse("Kill Server", command);
-                    await command.RespondAsync("Kill command sent to the application", ephemeral: true);
-                    break;
-                case "update-server":
-                    application.Update();
-                    await CommandResponse("Update Server", command);
-                    await command.RespondAsync("Update command sent to the application", ephemeral: true);
-                    break;
-                case "console":
-                    await SendConsoleCommand(command);
-                    await CommandResponse("`" + command.Data.Options.First().Options.First().Value.ToString() + "` console ", command);
-                    await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Options.First().Value.ToString() + "`", ephemeral: true);
-                    break;
-                case "full-playtime-list":
                     if (command.Data.Options.First().Options.Count > 0)
                     {
                         string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName,true);
+                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false);
                         await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                     }
                     else
                     {
-                        string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
-                        if (playTime.Length > 2000)
-                        {
-                            string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
-                            try
-                            {
-                                playTime = playTime.Replace("```", "");
-                                using (FileStream fileStream = File.Create(path))
-                                {
-                                    byte[] text = new UTF8Encoding(true).GetBytes(playTime);
-                                    fileStream.Write(text,0,text.Length);
-                                }
-                            }
-                            catch(Exception ex)
-                            {
-                                log.Error("Error creating file: " + ex.Message);
-                            }
-                            
-                            await command.RespondWithFileAsync(path,ephemeral: true);
+                        await ShowPlayerPlayTime(command);
+                        await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
+                    }
+                    return;
+                }
+                //init bool for permission check
+                bool hasServerPermission = false;
 
-                            try
-                            {
-                                File.Delete(path);
-                            }
-                            catch(Exception ex)
-                            {
-                                log.Error("Error deleting file: " + ex.Message);
-                            }
+                if (command.User is SocketGuildUser user)
+                    //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+                if (!hasServerPermission)
+                {
+                    await command.RespondAsync("You do not have permission to use this command!", ephemeral: true);
+                    return;
+                }
+
+                switch (command.Data.Options.First().Name)
+                {
+                    case "info":
+                        if (command.Data.Options.First().Options.Count > 0)
+                        {
+                            bool buttonless = Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
+                            await GetServerInfo(false, command, buttonless);
                         }
                         else
                         {
-                            await command.RespondAsync(playTime, ephemeral: true);
+                            await GetServerInfo(false, command, false);
                         }
-                        
-                        //await command.User.SendMessageAsync(playTime);
+                        await command.RespondAsync("Info panel created", ephemeral: true);
+                        break;
+                    case "start-server":
+                        application.Start();
+                        await CommandResponse("Start Server", command);
+                        await command.RespondAsync("Start command sent to the application", ephemeral: true);
+                        break;
+                    case "stop-server":
+                        application.Stop();
+                        await CommandResponse("Stop Server", command);
+                        await command.RespondAsync("Stop command sent to the application", ephemeral: true);
+                        break;
+                    case "restart-server":
+                        application.Restart();
+                        await CommandResponse("Restart Server", command);
+                        await command.RespondAsync("Restart command sent to the application", ephemeral: true);
+                        break;
+                    case "kill-server":
+                        application.Restart();
+                        await CommandResponse("Kill Server", command);
+                        await command.RespondAsync("Kill command sent to the application", ephemeral: true);
+                        break;
+                    case "update-server":
+                        application.Update();
+                        await CommandResponse("Update Server", command);
+                        await command.RespondAsync("Update command sent to the application", ephemeral: true);
+                        break;
+                    case "console":
+                        await SendConsoleCommand(command);
+                        await CommandResponse("`" + command.Data.Options.First().Options.First().Value.ToString() + "` console ", command);
+                        await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Options.First().Value.ToString() + "`", ephemeral: true);
+                        break;
+                    case "full-playtime-list":
+                        if (command.Data.Options.First().Options.Count > 0)
+                        {
+                            string playerName = command.Data.Options.First().Options.First().Value.ToString();
+                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true);
+                            await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                        }
+                        else
+                        {
+                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
+                            if (playTime.Length > 2000)
+                            {
+                                string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
+                                try
+                                {
+                                    playTime = playTime.Replace("```", "");
+                                    using (FileStream fileStream = File.Create(path))
+                                    {
+                                        byte[] text = new UTF8Encoding(true).GetBytes(playTime);
+                                        fileStream.Write(text, 0, text.Length);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    log.Error("Error creating file: " + ex.Message);
+                                }
+
+                                await command.RespondWithFileAsync(path, ephemeral: true);
+
+                                try
+                                {
+                                    File.Delete(path);
+                                }
+                                catch (Exception ex)
+                                {
+                                    log.Error("Error deleting file: " + ex.Message);
+                                }
+                            }
+                            else
+                            {
+                                await command.RespondAsync(playTime, ephemeral: true);
+                            }
+
+                            //await command.User.SendMessageAsync(playTime);
+                        }
+                        break;
+                }
+
+            }
+            else
+            {
+                //no bot prefix
+                //leaderboard permissionless
+                if (command.Data.Name.Equals("show-playtime"))
+                {
+                    if (command.Data.Options.Count > 0)
+                    {
+                        string playerName = command.Data.Options.First().Value.ToString();
+                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false);
+                        await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                     }
-                    break;
+                    else
+                    {
+                        await ShowPlayerPlayTime(command);
+                        await command.RespondAsync("Playtime leaderboard displayed", ephemeral: true);
+                    }
+                    return;
+                }
+                //init bool for permission check
+                bool hasServerPermission = false;
+
+                if (command.User is SocketGuildUser user)
+                    //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+                if (!hasServerPermission)
+                {
+                    await command.RespondAsync("You do not have permission to use this command!", ephemeral: true);
+                    return;
+                }
+
+                switch (command.Data.Name)
+                {
+                    case "info":
+                        if (command.Data.Options.Count > 0)
+                        {
+                            bool buttonless = Convert.ToBoolean(command.Data.Options.First().Value.ToString());
+                            await GetServerInfo(false, command, buttonless);
+                        }
+                        else
+                        {
+                            await GetServerInfo(false, command, false);
+                        }
+                        await command.RespondAsync("Info panel created", ephemeral: true);
+                        break;
+                    case "start-server":
+                        application.Start();
+                        await CommandResponse("Start Server", command);
+                        await command.RespondAsync("Start command sent to the application", ephemeral: true);
+                        break;
+                    case "stop-server":
+                        application.Stop();
+                        await CommandResponse("Stop Server", command);
+                        await command.RespondAsync("Stop command sent to the application", ephemeral: true);
+                        break;
+                    case "restart-server":
+                        application.Restart();
+                        await CommandResponse("Restart Server", command);
+                        await command.RespondAsync("Restart command sent to the application", ephemeral: true);
+                        break;
+                    case "kill-server":
+                        application.Restart();
+                        await CommandResponse("Kill Server", command);
+                        await command.RespondAsync("Kill command sent to the application", ephemeral: true);
+                        break;
+                    case "update-server":
+                        application.Update();
+                        await CommandResponse("Update Server", command);
+                        await command.RespondAsync("Update command sent to the application", ephemeral: true);
+                        break;
+                    case "console":
+                        await SendConsoleCommand(command);
+                        await CommandResponse("`" + command.Data.Options.First().Value.ToString() + "` console ", command);
+                        await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Value.ToString() + "`", ephemeral: true);
+                        break;
+                    case "full-playtime-list":
+                        if (command.Data.Options.Count > 0)
+                        {
+                            string playerName = command.Data.Options.First().Value.ToString();
+                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true);
+                            await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                        }
+                        else
+                        {
+                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
+                            if (playTime.Length > 2000)
+                            {
+                                string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
+                                try
+                                {
+                                    playTime = playTime.Replace("```", "");
+                                    using (FileStream fileStream = File.Create(path))
+                                    {
+                                        byte[] text = new UTF8Encoding(true).GetBytes(playTime);
+                                        fileStream.Write(text, 0, text.Length);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    log.Error("Error creating file: " + ex.Message);
+                                }
+
+                                await command.RespondWithFileAsync(path, ephemeral: true);
+
+                                try
+                                {
+                                    File.Delete(path);
+                                }
+                                catch (Exception ex)
+                                {
+                                    log.Error("Error deleting file: " + ex.Message);
+                                }
+                            }
+                            else
+                            {
+                                await command.RespondAsync(playTime, ephemeral: true);
+                            }
+
+                            //await command.User.SendMessageAsync(playTime);
+                        }
+                        break;
+                }
             }
         }
 

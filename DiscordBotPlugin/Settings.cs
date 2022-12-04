@@ -97,6 +97,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Playtime Leaderboard", "Display the playtime leaderboard on the info panel - top 5 are shown", false)]
             public bool ShowPlaytimeLeaderboard = false;
 
+            [WebSetting("Remove Bot Name", "Remove [BOT NAME] from the command", false)]
+            public bool RemoveBotName = false;
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }
