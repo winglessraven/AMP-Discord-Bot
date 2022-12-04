@@ -25,6 +25,9 @@ A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that ca
 | `/[BOT NAME] console [command]`   | Send a command to the server |
 | `/[BOT NAME] playtime`   | Show playtime leaderboard |
 | `/[BOT NAME] full-playtime-list`   | Show full playtime list with last seen value |
+
+*Note: If `Remove Bot Name` is enabled in settings then the commands will exclude the name.*
+
 # Configuration Steps
 ## Configure AMP
 Before the plugin can be used you need to configure AMP in a specific way.  **NOTE: The plugin cannot be used on ADS. It can only run on non-ADS instances.**
@@ -91,6 +94,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)|
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
 |Display Playtime Leaderboard|Toggle the playtime leaderboard on the info panel|
+|Remove Bot Name|Removes the bot name from the base command to allow granular permissions from within the Discord server settings|
 
 ## AMP Discord Bot Colours
 The `Discord Bot Colours` section give you the ability to change the colour of your embedded messages in Discord.  For each option you want to change insert the hex colour code required.
