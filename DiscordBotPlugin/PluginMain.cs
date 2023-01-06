@@ -479,7 +479,7 @@ namespace DiscordBotPlugin
                     var instanceName = platform.PlatformName;
                     var cpuUsageString = cpuUsage + "%";
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
                     if (application.State == ApplicationState.Ready)
                     {
