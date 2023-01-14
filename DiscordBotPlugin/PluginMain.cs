@@ -272,6 +272,11 @@ namespace DiscordBotPlugin
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
+            if(_settings.MainSettings.AdditionalEmbedFieldTitle.Length > 0)
+            {
+                embed.AddField(_settings.MainSettings.AdditionalEmbedFieldTitle, _settings.MainSettings.AdditionalEmbedFieldText);
+            }
+
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 

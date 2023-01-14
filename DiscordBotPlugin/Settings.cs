@@ -100,6 +100,12 @@ namespace DiscordBotPlugin
             [WebSetting("Remove Bot Name", "Remove [BOT NAME] from the command", false)]
             public bool RemoveBotName = false;
 
+            [WebSetting("Additional Embed Field Title", "Add an additional field in the info panel embed, put your title here", false)]
+            public string AdditionalEmbedFieldTitle = "";
+
+            [WebSetting("Additional Embed Field Text", "Add an additional field in the info panel embed, put your content here", false)]
+            public string AdditionalEmbedFieldText = "";
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }
