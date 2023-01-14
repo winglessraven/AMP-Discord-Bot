@@ -272,6 +272,11 @@ namespace DiscordBotPlugin
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
+            if(_settings.MainSettings.AdditionalEmbedFieldTitle.Length > 0)
+            {
+                embed.AddField(_settings.MainSettings.AdditionalEmbedFieldTitle, _settings.MainSettings.AdditionalEmbedFieldText);
+            }
+
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 
@@ -479,7 +484,7 @@ namespace DiscordBotPlugin
                     var instanceName = platform.PlatformName;
                     var cpuUsageString = cpuUsage + "%";
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB");
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
                     if (application.State == ApplicationState.Ready)
                     {

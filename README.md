@@ -95,6 +95,8 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
 |Display Playtime Leaderboard|Toggle the playtime leaderboard on the info panel|
 |Remove Bot Name|Removes the bot name from the base command to allow granular permissions from within the Discord server settings|
+|Additional Embed Field Title|Title for an additional field on the info panel embed|
+|Additional Embed Field Text|Content for an additional field on the info panel embed|
 
 ## AMP Discord Bot Colours
 The `Discord Bot Colours` section give you the ability to change the colour of your embedded messages in Discord.  For each option you want to change insert the hex colour code required.
