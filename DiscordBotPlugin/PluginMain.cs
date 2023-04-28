@@ -39,12 +39,22 @@ namespace DiscordBotPlugin
             aMPInstanceInfo = AMPInstanceInfo;
             _config = config;
             _settings.SettingModified += Settings_SettingModified;
-
+            log.MessageLogged += Log_MessageLogged;
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
 
             //register join and leave events
             hasSimpleUserList.UserJoins += UserJoins;
             hasSimpleUserList.UserLeaves += UserLeaves;
+        }
+
+        private void Log_MessageLogged(object sender, LogEventArgs e)
+        {
+            if (e.Level == LogLevels.Chat.ToString() && _settings.MainSettings.SendChatToDiscord && _settings.MainSettings.ChatToDiscordChannel != "")
+            {
+                //chat message, clean and send to discord
+                string clean = e.Message.Replace("`", "'");
+                _ = ChatMessageSend(clean);
+            }
         }
 
         public override void Init(out WebMethodsBase APIMethods)
@@ -79,6 +89,7 @@ namespace DiscordBotPlugin
                         _client.Log -= Log;
                         _client.Ready -= ClientReady;
                         _client.SlashCommandExecuted -= SlashCommandHandler;
+                        _client.MessageReceived -= MessageHandler;
                         _client.LogoutAsync();
                     }
                 }
@@ -119,7 +130,18 @@ namespace DiscordBotPlugin
         /// <returns></returns>
         public async Task ConnectDiscordAsync(string BotToken)
         {
-            DiscordSocketConfig config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
+            DiscordSocketConfig config;
+
+            if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
+            {
+                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
+            }
+            else
+            {
+                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
+            }
+
+            
 
             //init Discord client & command service
             _client = new DiscordSocketClient(config);
@@ -129,7 +151,8 @@ namespace DiscordBotPlugin
             _client.ButtonExecuted += OnButtonPress;
             _client.Ready += ClientReady;
             _client.SlashCommandExecuted += SlashCommandHandler;
-
+            if(_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
+                _client.MessageReceived += MessageHandler;
 
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
@@ -171,6 +194,22 @@ namespace DiscordBotPlugin
             catch (Exception exception)
             {
                 log.Error("Cannot send command: " + exception.Message);
+                return Task.CompletedTask;
+            }
+        }
+
+        private Task SendChatCommand(string author, string msg)
+        {
+            try
+            {
+                //send the command to the instance
+                IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                writeableConsole.WriteLine("say [" + author + "] " + msg);
+                return Task.CompletedTask;
+            }
+            catch (Exception exception)
+            {
+                log.Error("Cannot send chat message: " + exception.Message);
                 return Task.CompletedTask;
             }
         }
@@ -564,6 +603,19 @@ namespace DiscordBotPlugin
             {
                 await ManageServer(arg);
                 await ButtonResonse("Manage", arg);
+            }
+        }
+
+        private async Task ChatMessageSend(string Message)
+        {
+            var _guild = _client.Guilds;
+            foreach(SocketGuild guild in _guild)
+            {
+                var _channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ChatToDiscordChannel);
+                if(_channel != null)
+                {
+                    await _client.GetGuild(guild.Id).GetTextChannel(_channel.Id).SendMessageAsync("`" + Message + "`");
+                }
             }
         }
 
@@ -1299,6 +1351,18 @@ namespace DiscordBotPlugin
             catch (HttpException exception)
             {
                 log.Error(exception.Message);
+            }
+        }
+
+        private async Task MessageHandler(SocketMessage message)
+        {
+            //wrong channel or bot then return and don't do anything further
+            if (!_settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot == true)
+                return;
+
+            if(message.Channel.Name.Equals(_settings.MainSettings.ChatToDiscordChannel))
+            {
+                await SendChatCommand(message.Author.Username.ToString(), message.CleanContent.ToString());
             }
         }
 
