@@ -53,7 +53,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 
 ### Create the Bot
 * Click `Bot` on the menu bar along the left, then click `Add Bot`
-* Give your bot an icon and enable `Server Members Intent` – this is to ensure that cached member groups are not used if using permissions for controlling servers (start/stop/update/restart/kill)
+* Give your bot an icon and enable `Server Members Intent` (this is to ensure that cached member groups are not used if using permissions for controlling servers (start/stop/update/restart/kill)) AND `Message Content Intent` (this is for writing chat messages back to Minecraft servers if enabled)
 * Save your changes
 * Copy your bot token and paste it in the token field of the Discord Bot menu in AMP
 
