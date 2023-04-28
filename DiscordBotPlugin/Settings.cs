@@ -106,6 +106,15 @@ namespace DiscordBotPlugin
             [WebSetting("Additional Embed Field Text", "Add an additional field in the info panel embed, put your content here", false)]
             public string AdditionalEmbedFieldText = "";
 
+            [WebSetting("Send Chat to Discord", "Send chat messages to a Discord channel", false)]
+            public bool SendChatToDiscord = false;
+
+            [WebSetting("Chat Discord Channel", "Discord channel name to send chat messages to (if enabled)", false)]
+            public string ChatToDiscordChannel = "";
+
+            [WebSetting("Send Chat from Discord to Server", "Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)", false)]
+            public bool SendDiscordChatToServer = false;
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }
