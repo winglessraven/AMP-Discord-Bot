@@ -47,8 +47,14 @@ namespace DiscordBotPlugin
             hasSimpleUserList.UserLeaves += UserLeaves;
         }
 
+        /// <summary>
+        /// Runs on MessageLogged event
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event Args</param>
         private void Log_MessageLogged(object sender, LogEventArgs e)
         {
+            //check if it's logged as a chat message, if it is and send to Discord is enabled then clean it to avoid weird code blocks and send it
             if (e.Level == LogLevels.Chat.ToString() && _settings.MainSettings.SendChatToDiscord && _settings.MainSettings.ChatToDiscordChannel != "")
             {
                 //chat message, clean and send to discord
@@ -62,9 +68,14 @@ namespace DiscordBotPlugin
             APIMethods = new WebMethods(_tasks);
         }
 
+        /// <summary>
+        /// Runs on SettingsModified event
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event Args</param>
         void Settings_SettingModified(object sender, SettingModifiedEventArgs e)
         {
-            //if bot setting activated, try starting it
+            //if bot setting activated, try starting it if it's not already running
             if (_settings.MainSettings.BotActive)
             {
                 try
@@ -78,7 +89,7 @@ namespace DiscordBotPlugin
                 }
             }
 
-            //bot deactivated, disconnect from Discord (if connected)
+            //bot deactivated, disconnect from Discord (if connected) and stop listening to events
             if (!_settings.MainSettings.BotActive)
             {
                 if (_client != null)
@@ -100,7 +111,6 @@ namespace DiscordBotPlugin
 
         public override void PostInit()
         {
-
             //check if the bot is turned on
             if (_settings.MainSettings.BotActive)
             {
@@ -132,6 +142,7 @@ namespace DiscordBotPlugin
         {
             DiscordSocketConfig config;
 
+            //if chat is going to be sent from Discord to the server set the config to inculde MessageContent intent, otherwise not needed
             if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
             {
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
@@ -140,8 +151,6 @@ namespace DiscordBotPlugin
             {
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
             }
-
-            
 
             //init Discord client & command service
             _client = new DiscordSocketClient(config);
@@ -169,15 +178,20 @@ namespace DiscordBotPlugin
             return Task.CompletedTask;
         }
 
-
-
+        /// <summary>
+        /// Send a command to the AMP instance
+        /// </summary>
+        /// <param name="msg">Command to send to the server</param>
+        /// <returns></returns>
         private Task SendConsoleCommand(SocketSlashCommand msg)
         {
             try
             {
+                //init the command string
                 string command = "";
-                //get the command to be sent
-                if(_settings.MainSettings.RemoveBotName)
+
+                //get the command to be sent, if the bot name has been removed from the command then take the first value, otherwise the second
+                if (_settings.MainSettings.RemoveBotName)
                 {
                     command = msg.Data.Options.First().Value.ToString();
                 }
@@ -186,9 +200,10 @@ namespace DiscordBotPlugin
                     command = msg.Data.Options.First().Options.First().Value.ToString();
                 }
 
-                //send the command to the instance
+                //send the command to the AMP instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine(command);
+
                 return Task.CompletedTask;
             }
             catch (Exception exception)
@@ -198,6 +213,12 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Send a chat message to the AMP instance, only for Minecraft for now
+        /// </summary>
+        /// <param name="author">Discord name of the sender</param>
+        /// <param name="msg">Message to send</param>
+        /// <returns></returns>
         private Task SendChatCommand(string author, string msg)
         {
             try
@@ -205,6 +226,7 @@ namespace DiscordBotPlugin
                 //send the command to the instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine("say [" + author + "] " + msg);
+
                 return Task.CompletedTask;
             }
             catch (Exception exception)
@@ -214,14 +236,21 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Task to get current server info and create or update an embeded message
+        /// </summary>
+        /// <param name="updateExisting">Embed already exists?</param>
+        /// <param name="msg">Command from Discord</param>
+        /// <param name="Buttonless">Should the embed be buttonless?</param>
+        /// <returns></returns>
         private async Task GetServerInfo(bool updateExisting, SocketSlashCommand msg, bool Buttonless)
         {
+            //if bot isn't connected, stop any further action
             if (_client.ConnectionState != ConnectionState.Connected)
                 return;
 
-            //cast to get player count / info
+            //get count of players online and maximum slots
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
-
             var onlinePlayers = hasSimpleUserList.Users.Count;
             var maximumPlayers = hasSimpleUserList.MaxUsers;
 
@@ -232,6 +261,7 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
+            //if a custom colour is set use it, otherwise use default
             if (!_settings.ColourSettings.InfoPanelColour.Equals(""))
             {
                 embed.Color = GetColour("Info", _settings.ColourSettings.InfoPanelColour);
@@ -241,12 +271,12 @@ namespace DiscordBotPlugin
                 embed.Color = Color.DarkGrey;
             }
 
-            //server online
+            //if server is online
             if (application.State == ApplicationState.Ready)
             {
                 embed.AddField("Server Status", ":white_check_mark: " + GetApplicationStateString(), false);
             }
-            //server off or errored
+            //if server is off or errored
             else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
             {
                 embed.AddField("Server Status", ":no_entry: " + GetApplicationStateString(), false);
@@ -257,15 +287,25 @@ namespace DiscordBotPlugin
                 embed.AddField("Server Status", ":hourglass: " + GetApplicationStateString(), false);
             }
 
+            //set server name field
             embed.AddField("Server Name", "`" + _settings.MainSettings.ServerDisplayName + "`", true);
+            
+            //set server IP field
             embed.AddField("Server IP", "`" + _settings.MainSettings.ServerConnectionURL + "`", true);
+
+            //set password field if populated in setttings
             if (_settings.MainSettings.ServerPassword != "")
             {
                 embed.AddField("Server Password", "`" + _settings.MainSettings.ServerPassword + "`", true);
             }
+
+            //set CPU usage field
             embed.AddField("CPU Usage", application.GetCPUUsage() + "%", true);
+
+            //set mem usage field
             embed.AddField("Memory Usage", application.GetRAMUsage() + "MB", true);
 
+            //if server is online, get the uptime info and set the field accordingly
             if (application.State == ApplicationState.Ready)
             {
                 TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
@@ -299,6 +339,7 @@ namespace DiscordBotPlugin
                 }
             }
 
+            //set modpack url field if populated in settings
             if (_settings.MainSettings.ModpackURL != "")
             {
                 embed.AddField("Server Mod Pack", _settings.MainSettings.ModpackURL, false);
@@ -311,18 +352,25 @@ namespace DiscordBotPlugin
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
+            //if user has added an additonal embed field, add it
             if(_settings.MainSettings.AdditionalEmbedFieldTitle.Length > 0)
             {
                 embed.AddField(_settings.MainSettings.AdditionalEmbedFieldTitle, _settings.MainSettings.AdditionalEmbedFieldText);
             }
 
+            //add the footer
             embed.WithFooter(_settings.MainSettings.BotTagline);
+
+            //set the update time
             embed.WithCurrentTimestamp();
 
+            //set the thumbnail
             embed.WithThumbnailUrl(_settings.MainSettings.GameImageURL);
 
-            //add buttons
+            //create new component builder for buttons
             var builder = new ComponentBuilder();
+
+            //if start button required, add it and set the state depending on the server status (disabled if ready or starting or installing/updating)
             if (_settings.MainSettings.ShowStartButton)
                 if (application.State == ApplicationState.Ready || application.State == ApplicationState.Starting || application.State == ApplicationState.Installing)
                 {
@@ -333,6 +381,7 @@ namespace DiscordBotPlugin
                     builder.WithButton("Start", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success, disabled: false);
                 }
 
+            //if stop button required, add it and set the state depending on the server status (disabled if stopped or failed)
             if (_settings.MainSettings.ShowStopButton)
                 if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                 {
@@ -343,6 +392,7 @@ namespace DiscordBotPlugin
                     builder.WithButton("Stop", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: false);
                 }
 
+            //if restart button required, add it and set the state depending on the server status (disabled if stopper or failed)
             if (_settings.MainSettings.ShowRestartButton)
                 if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                 {
@@ -353,6 +403,7 @@ namespace DiscordBotPlugin
                     builder.WithButton("Restart", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: false);
                 }
 
+            //if kill button required, add it and set the state depending on the server status (disabled if stopped or failed)
             if (_settings.MainSettings.ShowKillButton)
                 if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                 {
@@ -363,6 +414,7 @@ namespace DiscordBotPlugin
                     builder.WithButton("Kill", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: false);
                 }
 
+            //if update button required, add it and set the state depending on the server status (disabled if installing/updating)
             if (_settings.MainSettings.ShowUpdateButton)
                 if (application.State == ApplicationState.Installing)
                 {
@@ -373,23 +425,27 @@ namespace DiscordBotPlugin
                     builder.WithButton("Update", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary, disabled: false);
                 }
 
+            //if manage button required, add it
             if (_settings.MainSettings.ShowManageButton)
                 builder.WithButton("Manage", "manage-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
 
-            //if updating an existing message
+            //if the message already exists, try to update it
             if (updateExisting)
             {
+                //cycle through each stored embed message ID (could be multiple across different channels/servers)
                 foreach (string details in _settings.MainSettings.InfoMessageDetails)
                 {
                     try
                     {
                         string[] split = details.Split('-');
 
+                        //get the IUserMessage
                         var existingMsg = await _client
                             .GetGuild(Convert.ToUInt64(split[0]))
                             .GetTextChannel(Convert.ToUInt64(split[1]))
                             .GetMessageAsync(Convert.ToUInt64(split[2])) as IUserMessage;
 
+                        //if it's not null then continue
                         if (existingMsg != null)
                         {
                             await existingMsg.ModifyAsync(x =>
@@ -397,6 +453,7 @@ namespace DiscordBotPlugin
                                 x.Embed = embed.Build();
                                 if (split.Length > 3)
                                 {
+                                    //check if it's configured as a buttonless panel
                                     if (split[3].ToString().Equals("True"))
                                     {
                                         //buttonless panel - do not build buttons
@@ -426,13 +483,14 @@ namespace DiscordBotPlugin
                     }
                 }
             }
+            //create a new embedded message and store the ID for updating later on
             else
             {
                 var chnl = msg.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
                 var channelID = msg.Channel.Id;
 
-                //post bot reply
+                //create the embed according to the request
                 if (Buttonless)
                 {
                     var message = await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
@@ -446,10 +504,16 @@ namespace DiscordBotPlugin
                     _settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
                 }
 
+                //save the newly added info message details
                 _config.Save(_settings);
             }
         }
 
+        /// <summary>
+        /// Show play time on the server
+        /// </summary>
+        /// <param name="msg">Command from Discord</param>
+        /// <returns></returns>
         private async Task ShowPlayerPlayTime(SocketSlashCommand msg)
         {
             //build bot response
@@ -459,13 +523,19 @@ namespace DiscordBotPlugin
                 ThumbnailUrl = _settings.MainSettings.GameImageURL
             };
 
+            //get the playtime leaderboard
             string leaderboard = GetPlayTimeLeaderBoard(15, false, null, false);
 
+            //add the playtime leaderboard
             embed.Description = leaderboard;
 
+            //set the footer
             embed.WithFooter(_settings.MainSettings.BotTagline);
+
+            //set the message time
             embed.WithCurrentTimestamp();
 
+            //check if a custom colour has been set and set it accordingly
             if (!_settings.ColourSettings.PlaytimeLeaderboardColour.Equals(""))
             {
                 embed.Color = GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour);
@@ -484,27 +554,34 @@ namespace DiscordBotPlugin
             await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
         }
 
-        //Looping task to update bot status/presence
+        /// <summary>
+        /// Looping task to update bot status/presence
+        /// </summary>
+        /// <returns></returns>
         public async Task SetStatus()
         {
+            //while the bot is active then update it
             while (_settings.MainSettings.BotActive)
             {
                 try
                 {
                     UserStatus status;
 
+                    //if server is stopped or in a failed state, set the presence to dnd
                     if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                     {
                         status = UserStatus.DoNotDisturb;
 
-                        //if there are still players listed in the timer, remove them
+                        //if there are still players listed in the timer remove them
                         if (playerPlayTimes.Count != 0)
                             ClearAllPlayTimes();
                     }
+                    //if server is running set presence to online
                     else if (application.State == ApplicationState.Ready)
                     {
                         status = UserStatus.Online;
                     }
+                    //for everything else set to idle
                     else
                     {
                         status = UserStatus.Idle;
@@ -514,17 +591,24 @@ namespace DiscordBotPlugin
                             ClearAllPlayTimes();
                     }
 
+                    //get the current user and max user count
                     IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
-
                     var onlinePlayers = hasSimpleUserList.Users.Count;
                     var maximumPlayers = hasSimpleUserList.MaxUsers;
+
+                    //get the cpu usage
                     var cpuUsage = application.GetCPUUsage();
-                    var memUsage = application.GetRAMUsage();
-                    var instanceName = platform.PlatformName;
                     var cpuUsageString = cpuUsage + "%";
+
+                    //get the memory usage
+                    var memUsage = application.GetRAMUsage();
+
+                    //get the name of the instance
+                    var instanceName = platform.PlatformName;
 
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
+                    //add the player count to the activity type if server is running
                     if (application.State == ApplicationState.Ready)
                     {
                         await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.Playing);
@@ -533,7 +617,6 @@ namespace DiscordBotPlugin
                     {
                         await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
                     }
-
 
                     await _client.SetStatusAsync(status);
 
@@ -550,6 +633,7 @@ namespace DiscordBotPlugin
                     log.Info("Exception: " + exception.Message);
                 }
 
+                //loop the task according to the bot refresh interval setting
                 await Task.Delay(_settings.MainSettings.BotRefreshInterval * 1000);
             }
         }
