@@ -27,24 +27,27 @@ namespace DiscordBotPlugin
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
-            IRunningTasksManager taskManager, IApplicationWrapper Application, IAMPInstanceInfo AMPInstanceInfo)
+            IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo)
         {
-            config.SaveMethod = PluginSaveMethod.KVP;
-            config.KVPSeparator = "=";
+            _config = config;
             this.log = log;
             this.platform = platform;
-            _settings = config.Load<Settings>(AutoSave: true); //Automatically saves settings when they're changed.
+            _settings = config.Load<Settings>(AutoSave: true);
             _tasks = taskManager;
-            application = Application;
+            this.application = application;
             aMPInstanceInfo = AMPInstanceInfo;
-            _config = config;
+
+            config.SaveMethod = PluginSaveMethod.KVP;
+            config.KVPSeparator = "=";
+
             _settings.SettingModified += Settings_SettingModified;
             log.MessageLogged += Log_MessageLogged;
-            IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
 
-            //register join and leave events
-            hasSimpleUserList.UserJoins += UserJoins;
-            hasSimpleUserList.UserLeaves += UserLeaves;
+            if (application is IHasSimpleUserList hasSimpleUserList)
+            {
+                hasSimpleUserList.UserJoins += UserJoins;
+                hasSimpleUserList.UserLeaves += UserLeaves;
+            }
         }
 
         /// <summary>
@@ -54,17 +57,23 @@ namespace DiscordBotPlugin
         /// <param name="e">Event Args</param>
         private void Log_MessageLogged(object sender, LogEventArgs e)
         {
-            //check if it's logged as a chat message, if it is and send to Discord is enabled then clean it to avoid weird code blocks and send it
-            if (e.Level == LogLevels.Chat.ToString() && _settings.MainSettings.SendChatToDiscord && _settings.MainSettings.ChatToDiscordChannel != "")
+            if (e.Level == LogLevels.Chat.ToString() &&
+                _settings.MainSettings.SendChatToDiscord &&
+                !string.IsNullOrEmpty(_settings.MainSettings.ChatToDiscordChannel))
             {
-                //chat message, clean and send to discord
+                // Clean the message to avoid code blocks and send it to Discord
                 string clean = e.Message.Replace("`", "'");
                 _ = ChatMessageSend(clean);
             }
         }
 
+        /// <summary>
+        /// Initializes the bot and assigns an instance of WebMethods to APIMethods.
+        /// </summary>
+        /// <param name="APIMethods">An output parameter to hold the instance of WebMethods.</param>
         public override void Init(out WebMethodsBase APIMethods)
         {
+            // Create a new instance of WebMethods and assign it to APIMethods
             APIMethods = new WebMethods(_tasks);
         }
 
@@ -75,33 +84,42 @@ namespace DiscordBotPlugin
         /// <param name="e">Event Args</param>
         void Settings_SettingModified(object sender, SettingModifiedEventArgs e)
         {
-            //if bot setting activated, try starting it if it's not already running
             if (_settings.MainSettings.BotActive)
             {
                 try
                 {
+                    // Start the Discord bot if it's not already running
                     if (_client == null || _client.ConnectionState == ConnectionState.Disconnected)
+                    {
                         _ = ConnectDiscordAsync(_settings.MainSettings.BotToken);
+                    }
                 }
                 catch (Exception exception)
                 {
-                    log.Error("Error with the Discord Bot : " + exception.Message);
+                    // Log any errors that occur during bot connection
+                    log.Error("Error with the Discord Bot: " + exception.Message);
                 }
             }
-
-            //bot deactivated, disconnect from Discord (if connected) and stop listening to events
-            if (!_settings.MainSettings.BotActive)
+            else
             {
-                if (_client != null)
+                if (_client != null && _client.ConnectionState == ConnectionState.Connected)
                 {
-                    if (_client.ConnectionState == ConnectionState.Connected)
+                    // Unsubscribe from events and logout from Discord if the bot is deactivated
+                    _client.ButtonExecuted -= OnButtonPress;
+                    _client.Log -= Log;
+                    _client.Ready -= ClientReady;
+                    _client.SlashCommandExecuted -= SlashCommandHandler;
+                    _client.MessageReceived -= MessageHandler;
+
+                    try
                     {
-                        _client.ButtonExecuted -= OnButtonPress;
-                        _client.Log -= Log;
-                        _client.Ready -= ClientReady;
-                        _client.SlashCommandExecuted -= SlashCommandHandler;
-                        _client.MessageReceived -= MessageHandler;
+                        // Logout from Discord
                         _client.LogoutAsync();
+                    }
+                    catch (Exception exception)
+                    {
+                        // Log any errors that occur during logout
+                        log.Error("Error logging out from Discord: " + exception.Message);
                     }
                 }
             }
@@ -109,15 +127,18 @@ namespace DiscordBotPlugin
 
         public override bool HasFrontendContent => false;
 
+        /// <summary>
+        /// Performs post-initialization actions for the bot.
+        /// </summary>
         public override void PostInit()
         {
-            //check if the bot is turned on
+            // Check if the bot is turned on
             if (_settings.MainSettings.BotActive)
             {
                 log.Info("Discord Bot Activated");
 
-                //check if we have a bot token and attempt to connect
-                if (_settings.MainSettings.BotToken != null && _settings.MainSettings.BotToken != "")
+                // Check if we have a bot token and attempt to connect
+                if (!string.IsNullOrEmpty(_settings.MainSettings.BotToken))
                 {
                     try
                     {
@@ -125,7 +146,8 @@ namespace DiscordBotPlugin
                     }
                     catch (Exception exception)
                     {
-                        log.Error("Error with the Discord Bot : " + exception.Message);
+                        // Log any errors that occur during bot connection
+                        log.Error("Error with the Discord Bot: " + exception.Message);
                     }
                 }
             }
@@ -136,15 +158,16 @@ namespace DiscordBotPlugin
         /// <summary>
         /// Async task to handle the Discord connection and call the status check
         /// </summary>
-        /// <param name="BotToken"></param>
-        /// <returns></returns>
+        /// <param name="BotToken">Discord Bot Token</param>
+        /// <returns>Task</returns>
         public async Task ConnectDiscordAsync(string BotToken)
         {
             DiscordSocketConfig config;
 
-            //if chat is going to be sent from Discord to the server set the config to inculde MessageContent intent, otherwise not needed
+            // Determine the GatewayIntents based on the chat settings
             if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
             {
+                // Include MessageContent intent if chat is sent between Discord and the server
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
             }
             else
@@ -152,29 +175,39 @@ namespace DiscordBotPlugin
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
             }
 
-            //init Discord client & command service
+            // Initialize Discord client with the specified configuration
             _client = new DiscordSocketClient(config);
 
-            //attach logs and events
+            // Attach event handlers for logs and events
             _client.Log += Log;
             _client.ButtonExecuted += OnButtonPress;
             _client.Ready += ClientReady;
             _client.SlashCommandExecuted += SlashCommandHandler;
-            if(_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
+            if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
                 _client.MessageReceived += MessageHandler;
 
+            // Login and start the Discord client
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
 
+            // Set the bot's status
             await SetStatus();
 
             // Block this task until the program is closed or bot is stopped.
             await Task.Delay(-1);
         }
 
+        /// <summary>
+        /// Logs a message with an information level.
+        /// </summary>
+        /// <param name="msg">The message to be logged.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private Task Log(LogMessage msg)
         {
+            // Log the message as an information level message
             log.Info(msg.ToString());
+
+            // Return a completed task to fulfill the method signature
             return Task.CompletedTask;
         }
 
@@ -182,15 +215,15 @@ namespace DiscordBotPlugin
         /// Send a command to the AMP instance
         /// </summary>
         /// <param name="msg">Command to send to the server</param>
-        /// <returns></returns>
+        /// <returns>Task</returns>
         private Task SendConsoleCommand(SocketSlashCommand msg)
         {
             try
             {
-                //init the command string
+                // Initialize the command string
                 string command = "";
 
-                //get the command to be sent, if the bot name has been removed from the command then take the first value, otherwise the second
+                // Get the command to be sent based on the bot name removal setting
                 if (_settings.MainSettings.RemoveBotName)
                 {
                     command = msg.Data.Options.First().Value.ToString();
@@ -200,15 +233,19 @@ namespace DiscordBotPlugin
                     command = msg.Data.Options.First().Options.First().Value.ToString();
                 }
 
-                //send the command to the AMP instance
+                // Send the command to the AMP instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole.WriteLine(command);
 
+                // Return a completed task to fulfill the method signature
                 return Task.CompletedTask;
             }
             catch (Exception exception)
             {
+                // Log any errors that occur during command sending
                 log.Error("Cannot send command: " + exception.Message);
+
+                // Return a completed task to fulfill the method signature
                 return Task.CompletedTask;
             }
         }
@@ -218,20 +255,27 @@ namespace DiscordBotPlugin
         /// </summary>
         /// <param name="author">Discord name of the sender</param>
         /// <param name="msg">Message to send</param>
-        /// <returns></returns>
+        /// <returns>Task</returns>
         private Task SendChatCommand(string author, string msg)
         {
             try
             {
-                //send the command to the instance
-                IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
-                writeableConsole.WriteLine("say [" + author + "] " + msg);
+                // Construct the command to send
+                string command = "say [" + author + "] " + msg;
 
+                // Send the chat command to the AMP instance
+                IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                writeableConsole.WriteLine(command);
+
+                // Return a completed task to fulfill the method signature
                 return Task.CompletedTask;
             }
             catch (Exception exception)
             {
+                // Log any errors that occur during chat message sending
                 log.Error("Cannot send chat message: " + exception.Message);
+
+                // Return a completed task to fulfill the method signature
                 return Task.CompletedTask;
             }
         }
@@ -516,42 +560,27 @@ namespace DiscordBotPlugin
         /// <returns></returns>
         private async Task ShowPlayerPlayTime(SocketSlashCommand msg)
         {
-            //build bot response
+            // Build the bot response
             var embed = new EmbedBuilder
             {
                 Title = "Play Time Leaderboard",
-                ThumbnailUrl = _settings.MainSettings.GameImageURL
+                ThumbnailUrl = _settings.MainSettings.GameImageURL,
+                Description = GetPlayTimeLeaderBoard(15, false, null, false),
+                Color = !string.IsNullOrEmpty(_settings.ColourSettings.PlaytimeLeaderboardColour)
+                    ? GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour)
+                    : Color.DarkGrey
             };
 
-            //get the playtime leaderboard
-            string leaderboard = GetPlayTimeLeaderBoard(15, false, null, false);
+            // Set the footer and the current timestamp
+            embed.WithFooter(_settings.MainSettings.BotTagline)
+                 .WithCurrentTimestamp();
 
-            //add the playtime leaderboard
-            embed.Description = leaderboard;
+            // Get the guild and channel IDs
+            var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id;
+            var channelId = msg.Channel.Id;
 
-            //set the footer
-            embed.WithFooter(_settings.MainSettings.BotTagline);
-
-            //set the message time
-            embed.WithCurrentTimestamp();
-
-            //check if a custom colour has been set and set it accordingly
-            if (!_settings.ColourSettings.PlaytimeLeaderboardColour.Equals(""))
-            {
-                embed.Color = GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour);
-            }
-            else
-            {
-                embed.Color = Color.DarkGrey;
-            }
-
-            //get guild
-            var chnl = msg.Channel as SocketGuildChannel;
-            var guild = chnl.Guild.Id;
-            var channelID = msg.Channel.Id;
-
-            //post leaderboard
-            await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
+            // Post the leaderboard in the specified channel
+            await _client.GetGuild(guildId.Value)?.GetTextChannel(channelId)?.SendMessageAsync(embed: embed.Build());
         }
 
         /// <summary>
@@ -560,55 +589,53 @@ namespace DiscordBotPlugin
         /// <returns></returns>
         public async Task SetStatus()
         {
-            //while the bot is active then update it
+            // While the bot is active, update its status
             while (_settings.MainSettings.BotActive)
             {
                 try
                 {
                     UserStatus status;
 
-                    //if server is stopped or in a failed state, set the presence to dnd
+                    // If the server is stopped or in a failed state, set the presence to DoNotDisturb
                     if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
                     {
                         status = UserStatus.DoNotDisturb;
 
-                        //if there are still players listed in the timer remove them
+                        // If there are still players listed in the timer, remove them
                         if (playerPlayTimes.Count != 0)
                             ClearAllPlayTimes();
                     }
-                    //if server is running set presence to online
+                    // If the server is running, set presence to Online
                     else if (application.State == ApplicationState.Ready)
                     {
                         status = UserStatus.Online;
                     }
-                    //for everything else set to idle
+                    // For everything else, set to Idle
                     else
                     {
                         status = UserStatus.Idle;
 
-                        //if there are still players listed in the timer, remove them
+                        // If there are still players listed in the timer, remove them
                         if (playerPlayTimes.Count != 0)
                             ClearAllPlayTimes();
                     }
 
-                    //get the current user and max user count
+                    // Get the current user and max user count
                     IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
                     var onlinePlayers = hasSimpleUserList.Users.Count;
                     var maximumPlayers = hasSimpleUserList.MaxUsers;
 
-                    //get the cpu usage
+                    // Get the CPU usage and memory usage
                     var cpuUsage = application.GetCPUUsage();
                     var cpuUsageString = cpuUsage + "%";
-
-                    //get the memory usage
                     var memUsage = application.GetRAMUsage();
 
-                    //get the name of the instance
+                    // Get the name of the instance
                     var instanceName = platform.PlatformName;
 
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
-                    //add the player count to the activity type if server is running
+                    // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
                     {
                         await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.Playing);
@@ -620,11 +647,11 @@ namespace DiscordBotPlugin
 
                     await _client.SetStatusAsync(status);
 
-                    //update the embed if it exists
-                    if (_settings.MainSettings.InfoMessageDetails != null)
-                        if (_settings.MainSettings.InfoMessageDetails.Count > 0)
-                            _ = GetServerInfo(true, null, false);
-
+                    // Update the embed if it exists
+                    if (_settings.MainSettings.InfoMessageDetails != null && _settings.MainSettings.InfoMessageDetails.Count > 0)
+                    {
+                        _ = GetServerInfo(true, null, false);
+                    }
                 }
                 catch (System.Net.WebException exception)
                 {
@@ -633,83 +660,109 @@ namespace DiscordBotPlugin
                     log.Info("Exception: " + exception.Message);
                 }
 
-                //loop the task according to the bot refresh interval setting
+                // Loop the task according to the bot refresh interval setting
                 await Task.Delay(_settings.MainSettings.BotRefreshInterval * 1000);
             }
         }
 
+        /// <summary>
+        /// Task that runs when a button is pressed on the info panel
+        /// </summary>
+        /// <param name="arg">Component info of the button that was pressed</param>
+        /// <returns></returns>
         private async Task OnButtonPress(SocketMessageComponent arg)
         {
             log.Debug("Button pressed: " + arg.Data.CustomId.ToString());
 
-            //temp bool for permission check
+            // Check if the user that pressed the button has permission
             bool hasServerPermission = false;
 
-            //check if the user that pressed the button has permission
-            _client.PurgeUserCache(); //try to clear cache so we can get the latest roles
+            // Check if the user has the appropriate role
             if (arg.User is SocketGuildUser user)
-                //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+            {
+                _client.PurgeUserCache(); // Try to clear cache so we can get the latest roles
                 hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+            }
 
             if (!hasServerPermission)
             {
-                //no permission, mark as responded and get out of here
+                // No permission, mark as responded and exit the method
                 await arg.DeferAsync();
                 return;
             }
 
-            if (arg.Data.CustomId.Equals("start-server-" + aMPInstanceInfo.InstanceId))
+            // Get the button ID without the instance ID suffix
+            var buttonId = arg.Data.CustomId.Replace("-" + aMPInstanceInfo.InstanceId, "");
+
+            // Perform the appropriate action based on the button ID
+            switch (buttonId)
             {
-                application.Start();
-                await ButtonResonse("Start", arg);
+                case "start-server":
+                    application.Start();
+                    break;
+                case "stop-server":
+                    application.Stop();
+                    break;
+                case "restart-server":
+                    application.Restart();
+                    break;
+                case "kill-server":
+                    application.Kill();
+                    break;
+                case "update-server":
+                    application.Update();
+                    break;
+                case "manage-server":
+                    await ManageServer(arg);
+                    break;
+                default:
+                    // Invalid button ID, exit the method
+                    return;
             }
-            if (arg.Data.CustomId.Equals("stop-server-" + aMPInstanceInfo.InstanceId))
-            {
-                application.Stop();
-                await ButtonResonse("Stop", arg);
-            }
-            if (arg.Data.CustomId.Equals("restart-server-" + aMPInstanceInfo.InstanceId))
-            {
-                application.Restart();
-                await ButtonResonse("Restart", arg);
-            }
-            if (arg.Data.CustomId.Equals("kill-server-" + aMPInstanceInfo.InstanceId))
-            {
-                application.Kill();
-                await ButtonResonse("Kill", arg);
-            }
-            if (arg.Data.CustomId.Equals("update-server-" + aMPInstanceInfo.InstanceId))
-            {
-                application.Update();
-                await ButtonResonse("Update", arg);
-            }
-            if (arg.Data.CustomId.Equals("manage-server-" + aMPInstanceInfo.InstanceId))
-            {
-                await ManageServer(arg);
-                await ButtonResonse("Manage", arg);
-            }
+
+            // Capitalize the first letter of the button response
+            var capitalizedButtonResponse = char.ToUpper(buttonId[0]) + buttonId.Substring(1).Replace("-server", "");
+
+            // Send button response
+            await ButtonResponse(capitalizedButtonResponse, arg);
         }
 
+        /// <summary>
+        /// Sends a chat message to the specified text channel in each guild the bot is a member of.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ChatMessageSend(string Message)
         {
-            var _guild = _client.Guilds;
-            foreach(SocketGuild guild in _guild)
+            // Get all guilds the bot is a member of
+            var guilds = _client.Guilds;
+
+            // Iterate over each guild
+            foreach (SocketGuild guild in guilds)
             {
-                var _channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ChatToDiscordChannel);
-                if(_channel != null)
+                // Find the text channel with the specified name
+                var channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ChatToDiscordChannel);
+
+                if (channel != null)
                 {
-                    await _client.GetGuild(guild.Id).GetTextChannel(_channel.Id).SendMessageAsync("`" + Message + "`");
+                    // Send the message to the channel
+                    await _client.GetGuild(guild.Id).GetTextChannel(channel.Id).SendMessageAsync("`" + Message + "`");
                 }
             }
         }
 
-        private async Task ButtonResonse(string Command, SocketMessageComponent arg)
+        /// <summary>
+        /// Handles button response and logs the command if enabled in settings.
+        /// </summary>
+        /// <param name="Command">Command received from the button.</param>
+        /// <param name="arg">SocketMessageComponent object containing information about the button click.</param>
+        private async Task ButtonResponse(string Command, SocketMessageComponent arg)
         {
-            //only log if option is enabled
+            // Only log if option is enabled
             if (_settings.MainSettings.LogButtonsAndCommands)
             {
-                //build bot response
                 var embed = new EmbedBuilder();
+
                 if (Command == "Manage")
                 {
                     embed.Title = "Manage Request";
@@ -718,94 +771,57 @@ namespace DiscordBotPlugin
                 else
                 {
                     embed.Title = "Server Command Sent";
-                    embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
+                    embed.Description = $"{Command} command has been sent to the {application.ApplicationName} server.";
                 }
 
-                //start command
+                // Start command
                 if (Command.Equals("Start"))
                 {
-                    if (!_settings.ColourSettings.ServerStartColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Start", _settings.ColourSettings.ServerStartColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Green;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ServerStartColour)
+                        ? GetColour("Start", _settings.ColourSettings.ServerStartColour)
+                        : Color.Green;
                 }
-
-                //stop command
-                if (Command.Equals("Stop"))
+                // Stop command
+                else if (Command.Equals("Stop"))
                 {
-                    if (!_settings.ColourSettings.ServerStopColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Stop", _settings.ColourSettings.ServerStopColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Red;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ServerStopColour)
+                        ? GetColour("Stop", _settings.ColourSettings.ServerStopColour)
+                        : Color.Red;
                 }
-
-                //restart command
-                if (Command.Equals("Restart"))
+                // Restart command
+                else if (Command.Equals("Restart"))
                 {
-                    if (!_settings.ColourSettings.ServerRestartColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Restart", _settings.ColourSettings.ServerRestartColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Orange;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ServerRestartColour)
+                        ? GetColour("Restart", _settings.ColourSettings.ServerRestartColour)
+                        : Color.Orange;
                 }
-
-                //kill command
-                if (Command.Equals("Kill"))
+                // Kill command
+                else if (Command.Equals("Kill"))
                 {
-                    if (!_settings.ColourSettings.ServerKillColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Kill", _settings.ColourSettings.ServerKillColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Red;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ServerKillColour)
+                        ? GetColour("Kill", _settings.ColourSettings.ServerKillColour)
+                        : Color.Red;
                 }
-
-                //update command
-                if (Command.Equals("Update"))
+                // Update command
+                else if (Command.Equals("Update"))
                 {
-                    if (!_settings.ColourSettings.ServerUpdateColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Update", _settings.ColourSettings.ServerUpdateColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Blue;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ServerUpdateColour)
+                        ? GetColour("Update", _settings.ColourSettings.ServerUpdateColour)
+                        : Color.Blue;
                 }
-
-                //manage command
-                if (Command.Equals("Manage"))
+                // Manage command
+                else if (Command.Equals("Manage"))
                 {
-                    if (!_settings.ColourSettings.ManageLinkColour.Equals(""))
-                    {
-                        embed.Color = GetColour("Manage", _settings.ColourSettings.ManageLinkColour);
-                    }
-                    else
-                    {
-                        embed.Color = Color.Blue;
-                    }
+                    embed.Color = !string.IsNullOrEmpty(_settings.ColourSettings.ManageLinkColour)
+                        ? GetColour("Manage", _settings.ColourSettings.ManageLinkColour)
+                        : Color.Blue;
                 }
 
-                //embed.Color = Color.LightGrey;
                 embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
                 embed.AddField("Requested by", arg.User.Mention, true);
                 embed.WithFooter(_settings.MainSettings.BotTagline);
                 embed.WithCurrentTimestamp();
 
-                //get guild
                 var chnl = arg.Message.Channel as SocketGuildChannel;
                 var guild = chnl.Guild.Id;
                 var logChannel = GetEventChannel(guild, _settings.MainSettings.ButtonResponseChannel);
@@ -814,78 +830,80 @@ namespace DiscordBotPlugin
                 if (logChannel != null)
                     channelID = logChannel.Id;
 
-                log.Debug("Guild: " + guild + " || Channel: " + channelID);
+                log.Debug($"Guild: {guild} || Channel: {channelID}");
 
                 await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             }
+
             await arg.DeferAsync();
         }
 
+        /// <summary>
+        /// Retrieves the color based on the given command and hexadecimal color code.
+        /// </summary>
+        /// <param name="command">Command associated with the color.</param>
+        /// <param name="hexColour">Hexadecimal color code.</param>
+        /// <returns>The Color object corresponding to the command and color code.</returns>
         private Color GetColour(string command, string hexColour)
         {
             try
             {
-                //remove # if it's in the string
+                // Remove '#' if it's present in the string
                 string tmp = hexColour.Replace("#", "");
 
-                //convert to uint
+                // Convert to uint
                 uint colourCode = uint.Parse(tmp, System.Globalization.NumberStyles.HexNumber);
 
                 return new Color(colourCode);
             }
             catch
             {
-                //couldn't convert to uint, log it and revert to default colour
-                log.Info("Colour code for " + command + " is invalid, reverting to default");
+                // Log an error message when the color code is invalid and revert to default color
 
-                if (command.Equals("Info"))
-                {
-                    return Color.DarkGrey;
-                }
+                log.Info($"Colour code for {command} is invalid, reverting to default");
 
-                if (command.Equals("Start") || command.Equals("PlayerJoin"))
+                // Return default colors based on the command
+                switch (command)
                 {
-                    return Color.Green;
-                }
-
-                if (command.Equals("Stop") || command.Equals("Kill") || command.Equals("PlayerLeave"))
-                {
-                    return Color.Red;
-                }
-
-                if (command.Equals("Restart"))
-                {
-                    return Color.Orange;
-                }
-
-                if (command.Equals("Update") || command.Equals("Manage"))
-                {
-                    return Color.Blue;
-                }
-
-                if (command.Equals("Console"))
-                {
-                    return Color.DarkGreen;
-                }
-
-                if (command.Equals("Leaderboard"))
-                {
-                    return Color.DarkGrey;
+                    case "Info":
+                        return Color.DarkGrey;
+                    case "Start":
+                    case "PlayerJoin":
+                        return Color.Green;
+                    case "Stop":
+                    case "Kill":
+                    case "PlayerLeave":
+                        return Color.Red;
+                    case "Restart":
+                        return Color.Orange;
+                    case "Update":
+                    case "Manage":
+                        return Color.Blue;
+                    case "Console":
+                        return Color.DarkGreen;
+                    case "Leaderboard":
+                        return Color.DarkGrey;
                 }
             }
 
             return Color.DarkerGrey;
         }
 
-        private async Task CommandResponse(string Command, SocketSlashCommand arg)
+        /// <summary>
+        /// Sends a command response with an embed message.
+        /// </summary>
+        /// <param name="command">The command received.</param>
+        /// <param name="arg">The received command arguments.</param>
+        private async Task CommandResponse(string command, SocketSlashCommand arg)
         {
-            //only log if option is enabled
+            // Only log if option is enabled
             if (!_settings.MainSettings.LogButtonsAndCommands)
                 return;
 
-            //build bot response
             var embed = new EmbedBuilder();
-            if (Command == "Manage")
+
+            // Set the title and description of the embed based on the command
+            if (command == "Manage")
             {
                 embed.Title = "Manage Request";
                 embed.Description = "Manage URL Request Received";
@@ -893,107 +911,58 @@ namespace DiscordBotPlugin
             else
             {
                 embed.Title = "Server Command Sent";
-                embed.Description = Command + " command has been sent to the " + application.ApplicationName + " server.";
+                embed.Description = $"{command} command has been sent to the {application.ApplicationName} server.";
             }
 
-            //start command
-            if (Command.Equals("Start Server"))
+            // Set the embed color based on the command
+            if (command.Equals("Start Server"))
             {
-                if (!_settings.ColourSettings.ServerStartColour.Equals(""))
-                {
-                    embed.Color = GetColour("Start", _settings.ColourSettings.ServerStartColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Start", _settings.ColourSettings.ServerStartColour);
+                if (embed.Color == null)
                     embed.Color = Color.Green;
-                }
             }
-
-            //stop command
-            if (Command.Equals("Stop Server"))
+            else if (command.Equals("Stop Server"))
             {
-                if (!_settings.ColourSettings.ServerStopColour.Equals(""))
-                {
-                    embed.Color = GetColour("Stop", _settings.ColourSettings.ServerStopColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Stop", _settings.ColourSettings.ServerStopColour);
+                if (embed.Color == null)
                     embed.Color = Color.Red;
-                }
             }
-
-            //restart command
-            if (Command.Equals("Restart Server"))
+            else if (command.Equals("Restart Server"))
             {
-                if (!_settings.ColourSettings.ServerRestartColour.Equals(""))
-                {
-                    embed.Color = GetColour("Restart", _settings.ColourSettings.ServerRestartColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Restart", _settings.ColourSettings.ServerRestartColour);
+                if (embed.Color == null)
                     embed.Color = Color.Orange;
-                }
             }
-
-            //kill command
-            if (Command.Equals("Kill Server"))
+            else if (command.Equals("Kill Server"))
             {
-                if (!_settings.ColourSettings.ServerKillColour.Equals(""))
-                {
-                    embed.Color = GetColour("Kill", _settings.ColourSettings.ServerKillColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Kill", _settings.ColourSettings.ServerKillColour);
+                if (embed.Color == null)
                     embed.Color = Color.Red;
-                }
             }
-
-            //update command
-            if (Command.Equals("Update Server"))
+            else if (command.Equals("Update Server"))
             {
-                if (!_settings.ColourSettings.ServerUpdateColour.Equals(""))
-                {
-                    embed.Color = GetColour("Update", _settings.ColourSettings.ServerUpdateColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Update", _settings.ColourSettings.ServerUpdateColour);
+                if (embed.Color == null)
                     embed.Color = Color.Blue;
-                }
             }
-
-            //manage command
-            if (Command.Equals("Manage Server"))
+            else if (command.Equals("Manage Server"))
             {
-                if (!_settings.ColourSettings.ManageLinkColour.Equals(""))
-                {
-                    embed.Color = GetColour("Manage", _settings.ColourSettings.ManageLinkColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Manage", _settings.ColourSettings.ManageLinkColour);
+                if (embed.Color == null)
                     embed.Color = Color.Blue;
-                }
             }
-
-            //console command
-            if (Command.Contains("console"))
+            else if (command.Contains("console"))
             {
-                if (!_settings.ColourSettings.ConsoleCommandColour.Equals(""))
-                {
-                    embed.Color = GetColour("Console", _settings.ColourSettings.ConsoleCommandColour);
-                }
-                else
-                {
+                embed.Color = GetColour("Console", _settings.ColourSettings.ConsoleCommandColour);
+                if (embed.Color == null)
                     embed.Color = Color.DarkGreen;
-                }
             }
-
 
             embed.ThumbnailUrl = _settings.MainSettings.GameImageURL;
             embed.AddField("Requested by", arg.User.Mention, true);
             embed.WithFooter(_settings.MainSettings.BotTagline);
             embed.WithCurrentTimestamp();
 
-            //get guild
             var chnl = arg.Channel as SocketGuildChannel;
             var guild = chnl.Guild.Id;
             var logChannel = GetEventChannel(guild, _settings.MainSettings.ButtonResponseChannel);
@@ -1002,19 +971,25 @@ namespace DiscordBotPlugin
             if (logChannel != null)
                 channelID = logChannel.Id;
 
-            log.Debug("Guild: " + guild + " || Channel: " + channelID);
+            log.Debug($"Guild: {guild} || Channel: {channelID}");
 
             await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
         }
 
+        /// <summary>
+        /// Event handler for when a user joins the server.
+        /// </summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="args">The event arguments containing user information.</param>
         private async void UserJoins(object sender, UserEventArgs args)
         {
-            //check if player is already in the list, if so remove it - shouldn't be there at this point
+            // Remove the player from the list if they are already present
             playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
 
-            //log jointime for player
+            // Log the join time for the player
             playerPlayTimes.Add(new PlayerPlayTime() { PlayerName = args.User.Name, JoinTime = DateTime.Now });
 
+            // Initialize play time and last seen information for the user if it doesn't exist
             if (!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
             {
                 _settings.MainSettings.PlayTime.Add(args.User.Name, TimeSpan.Zero);
@@ -1022,6 +997,7 @@ namespace DiscordBotPlugin
                 _config.Save(_settings);
             }
 
+            // Check if posting player events is disabled
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
 
@@ -1031,27 +1007,28 @@ namespace DiscordBotPlugin
                 var eventChannel = GetEventChannel(guildID, _settings.MainSettings.PostPlayerEventsChannel);
 
                 if (eventChannel == null)
-                    break; //doesn't exist so stop here
+                    break; // Event channel doesn't exist, stop processing
 
                 string userName = args.User.Name;
 
-                //build bot message
+                // Build the embed message for the event
                 var embed = new EmbedBuilder
                 {
                     Title = "Server Event",
                     ThumbnailUrl = _settings.MainSettings.GameImageURL
                 };
 
-                if (userName != "")
-                {
-                    embed.Description = userName + " joined the " + application.ApplicationName + " server.";
-                }
-                else
+                if (string.IsNullOrEmpty(userName))
                 {
                     embed.Description = "A player joined the " + application.ApplicationName + " server.";
                 }
+                else
+                {
+                    embed.Description = userName + " joined the " + application.ApplicationName + " server.";
+                }
 
-                if (!_settings.ColourSettings.ServerPlayerJoinEventColour.Equals(""))
+                // Set the embed color based on the configuration
+                if (!string.IsNullOrEmpty(_settings.ColourSettings.ServerPlayerJoinEventColour))
                 {
                     embed.Color = GetColour("PlayerJoin", _settings.ColourSettings.ServerPlayerJoinEventColour);
                 }
@@ -1066,34 +1043,39 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Event handler for when a user leaves the server.
+        /// </summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="args">The event arguments containing user information.</param>
         private async void UserLeaves(object sender, UserEventArgs args)
         {
             try
             {
-                //add leavetime for player
+                // Add leave time for the player
                 playerPlayTimes.Find(p => p.PlayerName == args.User.Name).LeaveTime = DateTime.Now;
 
-                //check entry for player, if not there add new entry
+                // Check if the player's entry exists in the playtime dictionary, if not, add a new entry
                 if (!_settings.MainSettings.PlayTime.ContainsKey(args.User.Name))
-                    _settings.MainSettings.PlayTime.Add(args.User.Name, new TimeSpan(0));
+                    _settings.MainSettings.PlayTime.Add(args.User.Name, TimeSpan.Zero);
 
+                // Calculate the session playtime for the player
                 TimeSpan sessionPlayTime = playerPlayTimes.Find(p => p.PlayerName == args.User.Name).LeaveTime - playerPlayTimes.Find(p => p.PlayerName == args.User.Name).JoinTime;
 
-                //update main playtime list
+                // Update the main playtime list
                 _settings.MainSettings.PlayTime[args.User.Name] += sessionPlayTime;
                 _settings.MainSettings.LastSeen[args.User.Name] = DateTime.Now;
                 _config.Save(_settings);
 
-                //remove from 'live' list
+                // Remove the player from the 'live' list
                 playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
-
             }
             catch (Exception exception)
             {
                 log.Error(exception.Message);
             }
 
-
+            // Check if posting player events is disabled
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
 
@@ -1102,27 +1084,28 @@ namespace DiscordBotPlugin
                 var guildID = socketGuild.Id;
                 var eventChannel = GetEventChannel(guildID, _settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null)
-                    return; //doesn't exist so stop here
+                    return; // Event channel doesn't exist, stop processing
 
                 string userName = args.User.Name;
 
-                //build bot message
+                // Build the embed message for the event
                 var embed = new EmbedBuilder
                 {
                     Title = "Server Event",
                     ThumbnailUrl = _settings.MainSettings.GameImageURL
                 };
 
-                if (userName != "")
-                {
-                    embed.Description = userName + " left the " + application.ApplicationName + " server.";
-                }
-                else
+                if (string.IsNullOrEmpty(userName))
                 {
                     embed.Description = "A player left the " + application.ApplicationName + " server.";
                 }
+                else
+                {
+                    embed.Description = userName + " left the " + application.ApplicationName + " server.";
+                }
 
-                if (!_settings.ColourSettings.ServerPlayerLeaveEventColour.Equals(""))
+                // Set the embed color based on the configuration
+                if (!string.IsNullOrEmpty(_settings.ColourSettings.ServerPlayerLeaveEventColour))
                 {
                     embed.Color = GetColour("PlayerLeave", _settings.ColourSettings.ServerPlayerLeaveEventColour);
                 }
@@ -1137,64 +1120,102 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Manages the server by sending a private message to the user with a link to the management panel.
+        /// </summary>
+        /// <param name="arg">The SocketMessageComponent argument.</param>
         private async Task ManageServer(SocketMessageComponent arg)
         {
             var builder = new ComponentBuilder();
             string managementProtocol = "http://";
+
+            // Check if SSL is enabled in the main settings and update the managementProtocol accordingly
             if (_settings.MainSettings.ManagementURLSSL)
+            {
                 managementProtocol = "https://";
-            builder.WithButton("Manage Server", style: ButtonStyle.Link, url: managementProtocol + _settings.MainSettings.ManagementURL + "/?instance=" + aMPInstanceInfo.InstanceId);
+            }
+
+            // Build the button with the management panel link using the appropriate protocol and instance ID
+            string managementPanelLink = $"{managementProtocol}{_settings.MainSettings.ManagementURL}/?instance={aMPInstanceInfo.InstanceId}";
+            builder.WithButton("Manage Server", style: ButtonStyle.Link, url: managementPanelLink);
+
+            // Send a private message to the user with the link to the management panel
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
         }
 
+        /// <summary>
+        /// Gets the string representation of the application state, with the option to use a replacement value if available.
+        /// </summary>
+        /// <returns>The string representation of the application state.</returns>
         private string GetApplicationStateString()
         {
-            //if replacement value exists, return it
+            // Check if a replacement value exists for the current application state
             if (_settings.MainSettings.ChangeStatus.ContainsKey(application.State.ToString()))
+            {
+                // Return the replacement value
                 return _settings.MainSettings.ChangeStatus[application.State.ToString()];
+            }
 
-            //no replacement exists so return the default value
+            // No replacement value exists, so return the default value (the application state as string)
             return application.State.ToString();
         }
 
+        /// <summary>
+        /// Generates the string representation of the bot's online presence based on the number of online players and maximum players.
+        /// </summary>
+        /// <param name="onlinePlayers">The number of online players.</param>
+        /// <param name="maximumPlayers">The maximum number of players.</param>
+        /// <returns>The string representation of the bot's online presence.</returns>
         private string OnlineBotPresenceString(int onlinePlayers, int maximumPlayers)
         {
-            //if valid player count and no custom value
+            // Check if there is a valid player count and no custom value
             if (_settings.MainSettings.OnlineBotPresence == "" && _settings.MainSettings.ValidPlayerCount)
-                return onlinePlayers + "/" + maximumPlayers + " players";
+            {
+                // Return the default representation of online players and maximum players
+                return $"{onlinePlayers}/{maximumPlayers} players";
+            }
 
-            //if no valid player count and no custom value
+            // Check if there is no valid player count and no custom value
             if (_settings.MainSettings.OnlineBotPresence == "")
+            {
+                // Return the default "Online" presence
                 return "Online";
+            }
 
-            //get custom value
+            // Get the custom value for the online bot presence
             string presence = _settings.MainSettings.OnlineBotPresence;
 
-            //replace variables
+            // Replace variables in the custom value with the actual values
             presence = presence.Replace("{OnlinePlayers}", onlinePlayers.ToString());
             presence = presence.Replace("{MaximumPlayers}", maximumPlayers.ToString());
 
             return presence;
         }
 
+        /// <summary>
+        /// Generates a leaderboard of players based on their playtime.
+        /// </summary>
+        /// <param name="placesToShow">The number of leaderboard positions to show.</param>
+        /// <param name="playerSpecific">Flag indicating if the leaderboard is player-specific.</param>
+        /// <param name="playerName">The name of the player (used when playerSpecific is true).</param>
+        /// <param name="fullList">Flag indicating if the full leaderboard list should be shown.</param>
+        /// <returns>The string representation of the playtime leaderboard.</returns>
         private string GetPlayTimeLeaderBoard(int placesToShow, bool playerSpecific, string playerName, bool fullList)
         {
-            //create new dictionary to hold logged time plus any current session time
+            // Create a new dictionary to hold the logged playtime plus any current session time
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
 
+            // Calculate current session time for each player and add it to the logged playtime
             foreach (PlayerPlayTime player in playerPlayTimes)
             {
                 TimeSpan currentSession = DateTime.Now - player.JoinTime;
-
-                log.Debug("Player: " + player.PlayerName + " || Current Session: " + currentSession + " || Logged: " + _settings.MainSettings.PlayTime[player.PlayerName]);
-
-                //add any current sessions to the logged playtime
                 playtime[player.PlayerName] = playtime[player.PlayerName].Add(currentSession);
             }
 
+            // Sort the playtime dictionary in descending order of playtime
             var sortedList = playtime.OrderByDescending(v => v.Value).ToList();
 
-            //if nothing is logged yet return no data
+            // If no playtime is logged yet, return a message indicating so
             if (sortedList.Count == 0)
             {
                 return "```No play time logged yet```";
@@ -1202,17 +1223,19 @@ namespace DiscordBotPlugin
 
             if (playerSpecific)
             {
+                // Check if the specified player is found in the leaderboard
                 if (sortedList.FindAll(p => p.Key == playerName).Count > 0)
                 {
                     TimeSpan time = sortedList.Find(p => p.Key == playerName).Value;
 
-                    return "`" + time.Days + "d " + time.Hours + "h " + time.Minutes + "m " + time.Seconds + "s, position " + (sortedList.FindIndex(p => p.Key == playerName) + 1) + ", last seen " + GetLastSeen(playerName) + "`";
+                    // Return the playtime, position, and last seen information for the specific player
+                    return $"`{time.Days}d {time.Hours}h {time.Minutes}m {time.Seconds}s, position {(sortedList.FindIndex(p => p.Key == playerName) + 1)}, last seen {GetLastSeen(playerName)}`";
                 }
                 else
                 {
+                    // If the specified player is not found in the leaderboard, return a message indicating so
                     return "```No play time logged yet```";
                 }
-
             }
             else
             {
@@ -1221,23 +1244,23 @@ namespace DiscordBotPlugin
 
                 if (fullList)
                 {
-                    leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", "Pos", "Player Name", "Play Time", "Last Seen") + Environment.NewLine;
+                    leaderboard += $"{string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", "Pos", "Player Name", "Play Time", "Last Seen")}{Environment.NewLine}";
                 }
 
-
+                // Generate the leaderboard string with the specified number of positions to show
                 foreach (KeyValuePair<string, TimeSpan> player in sortedList)
                 {
-                    //if outside places to show, stop processing
+                    // If outside the specified places to show, stop processing
                     if (position > placesToShow)
                         break;
 
                     if (fullList)
                     {
-                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds), GetLastSeen(player.Key)) + Environment.NewLine;
+                        leaderboard += $"{string.Format("{0,-4}{1,-20}{2,-15}{3,-30}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds), GetLastSeen(player.Key))}{Environment.NewLine}";
                     }
                     else
                     {
-                        leaderboard += string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds)) + Environment.NewLine;
+                        leaderboard += $"{string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds))}{Environment.NewLine}";
                     }
                     position++;
                 }
@@ -1246,13 +1269,19 @@ namespace DiscordBotPlugin
 
                 return leaderboard;
             }
-
         }
 
+        /// <summary>
+        /// Gets the last seen timestamp for a player.
+        /// </summary>
+        /// <param name="playerName">The name of the player.</param>
+        /// <returns>The last seen timestamp.</returns>
         private string GetLastSeen(string playerName)
         {
             IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
             bool playerOnline = false;
+
+            // Check if the player is online by iterating through the user list
             foreach (SimpleUser user in hasSimpleUserList.Users)
             {
                 if (user.Name == playerName)
@@ -1265,48 +1294,61 @@ namespace DiscordBotPlugin
 
             if (playerOnline)
             {
+                // If the player is online, set the last seen timestamp to the current time
                 lastSeen = DateTime.Now.ToString("dddd, dd MMMM yyyy HH:mm:ss");
             }
             else
             {
                 try
                 {
+                    // Get the last seen timestamp from the settings if available
                     lastSeen = _settings.MainSettings.LastSeen[playerName].ToString("dddd, dd MMMM yyyy HH:mm:ss");
                 }
                 catch (KeyNotFoundException)
                 {
-                    //player not found in list
+                    // If the player is not found in the last seen list, set the last seen timestamp to "N/A"
                     lastSeen = "N/A";
                 }
-
-
             }
 
             return lastSeen;
         }
 
+        /// <summary>
+        /// Clears all playtimes and updates the main playtime list and last seen timestamps.
+        /// </summary>
         private void ClearAllPlayTimes()
         {
             try
             {
+                // Iterate through the playerPlayTimes list
                 foreach (PlayerPlayTime playerPlayTime in playerPlayTimes)
                 {
-
                     log.Debug("Saving playtime for " + playerPlayTime.PlayerName);
-                    //set the leave time as now
+
+                    // Set the leave time as now
                     playerPlayTime.LeaveTime = DateTime.Now;
 
-                    //check entry for player, if not there add new entry
+                    // Check if the player is already in the playtime list, if not, add a new entry
                     if (!_settings.MainSettings.PlayTime.ContainsKey(playerPlayTime.PlayerName))
+                    {
                         _settings.MainSettings.PlayTime.Add(playerPlayTime.PlayerName, new TimeSpan(0));
+                    }
 
+                    // Calculate the session playtime
                     TimeSpan sessionPlayTime = playerPlayTime.LeaveTime - playerPlayTime.JoinTime;
 
-                    //update main playtime list
+                    // Update the main playtime list by adding the session playtime
                     _settings.MainSettings.PlayTime[playerPlayTime.PlayerName] += sessionPlayTime;
+
+                    // Update the last seen timestamp for the player
                     _settings.MainSettings.LastSeen[playerPlayTime.PlayerName] = DateTime.Now;
+
+                    // Save the updated settings to the configuration file
                     _config.Save(_settings);
                 }
+
+                // Clear the playerPlayTimes list
                 playerPlayTimes.Clear();
             }
             catch (Exception exception)
@@ -1315,13 +1357,18 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Sets up and registers application commands for the client.
+        /// </summary>
         public async Task ClientReady()
         {
+            // Create lists to store command properties and command builders
             List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
             List<SlashCommandBuilder> commandList = new List<SlashCommandBuilder>();
 
             if (_settings.MainSettings.RemoveBotName)
             {
+                // Add individual commands to the command list
                 commandList.Add(new SlashCommandBuilder()
                     .WithName("info")
                     .WithDescription("Create the Server Info Panel")
@@ -1364,72 +1411,74 @@ namespace DiscordBotPlugin
             }
             else
             {
-                //bot name for command
+                // Get bot name for command
                 string botName = _client.CurrentUser.Username.ToLower();
 
-                //replace any spaces with -
+                // Replace any spaces with '-'
                 botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
 
                 log.Info("Base command for bot: " + botName);
 
-                // global command
-                commandList.Add(new SlashCommandBuilder()
+                // Create the base bot command with subcommands
+                SlashCommandBuilder baseCommand = new SlashCommandBuilder()
                     .WithName(botName)
-                    .WithDescription("Base bot command")
-                        .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("info")
-                        .WithDescription("Create the Server Info Panel")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                            .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("start-server")
-                        .WithDescription("Start the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("stop-server")
-                        .WithDescription("Stop the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("restart-server")
-                        .WithDescription("Restart the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("kill-server")
-                        .WithDescription("Kill the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("update-server")
-                        .WithDescription("Update the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("show-playtime")
-                        .WithDescription("Show the Playtime Leaderboard")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                            .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("console")
-                        .WithDescription("Send a Console Command to the Application")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                            .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true)
-                        ).AddOption(new SlashCommandOptionBuilder()
-                        .WithName("full-playtime-list")
-                        .WithDescription("Full Playtime List")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                            .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false)
-                        )
-                    );
-            }
+                    .WithDescription("Base bot command");
 
+                // Add subcommands to the base command
+                baseCommand.AddOption(new SlashCommandOptionBuilder()
+                    .WithName("info")
+                    .WithDescription("Create the Server Info Panel")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("start-server")
+                    .WithDescription("Start the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("stop-server")
+                    .WithDescription("Stop the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("restart-server")
+                    .WithDescription("Restart the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("kill-server")
+                    .WithDescription("Kill the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("update-server")
+                    .WithDescription("Update the Server")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("show-playtime")
+                    .WithDescription("Show the Playtime Leaderboard")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("console")
+                    .WithDescription("Send a Console Command to the Application")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("full-playtime-list")
+                    .WithDescription("Full Playtime List")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+
+                // Add the base command to the command list
+                commandList.Add(baseCommand);
+            }
 
             try
             {
+                // Build the application command properties from the command builders
                 foreach (SlashCommandBuilder command in commandList)
                 {
                     applicationCommandProperties.Add(command.Build());
                 }
 
-                //applicationCommandProperties.Add(globalCommand.Build());
-
+                // Bulk overwrite the global application commands with the built command properties
                 await _client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
             }
             catch (HttpException exception)
@@ -1438,24 +1487,34 @@ namespace DiscordBotPlugin
             }
         }
 
+        /// <summary>
+        /// Handles incoming socket messages.
+        /// </summary>
+        /// <param name="message">The incoming socket message.</param>
         private async Task MessageHandler(SocketMessage message)
         {
-            //wrong channel or bot then return and don't do anything further
-            if (!_settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot == true)
+            // If sending Discord chat to server is disabled or the message is from a bot, return and do nothing further
+            if (!_settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot)
                 return;
 
-            if(message.Channel.Name.Equals(_settings.MainSettings.ChatToDiscordChannel))
+            // Check if the message is in the specified chat-to-Discord channel
+            if (message.Channel.Name.Equals(_settings.MainSettings.ChatToDiscordChannel))
             {
-                await SendChatCommand(message.Author.Username.ToString(), message.CleanContent.ToString());
+                // Send the chat command to the server
+                await SendChatCommand(message.Author.Username, message.CleanContent);
             }
         }
 
+        /// <summary>
+        /// Handles incoming socket slash commands.
+        /// </summary>
+        /// <param name="command">The incoming socket slash command.</param>
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
-            //using bot name base command
+            // Using bot name as the base command
             if (!_settings.MainSettings.RemoveBotName)
             {
-                //leaderboard permissionless
+                // Leaderboard permissionless
                 if (command.Data.Options.First().Name.Equals("show-playtime"))
                 {
                     if (command.Data.Options.First().Options.Count > 0)
@@ -1471,12 +1530,15 @@ namespace DiscordBotPlugin
                     }
                     return;
                 }
-                //init bool for permission check
+
+                // Initialize bool for permission check
                 bool hasServerPermission = false;
 
                 if (command.User is SocketGuildUser user)
-                    //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                {
+                    // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
                     hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+                }
 
                 if (!hasServerPermission)
                 {
@@ -1487,15 +1549,8 @@ namespace DiscordBotPlugin
                 switch (command.Data.Options.First().Name)
                 {
                     case "info":
-                        if (command.Data.Options.First().Options.Count > 0)
-                        {
-                            bool buttonless = Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
-                            await GetServerInfo(false, command, buttonless);
-                        }
-                        else
-                        {
-                            await GetServerInfo(false, command, false);
-                        }
+                        bool buttonless = command.Data.Options.First().Options.Count > 0 && Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
+                        await GetServerInfo(false, command, buttonless);
                         await command.RespondAsync("Info panel created", ephemeral: true);
                         break;
                     case "start-server":
@@ -1525,8 +1580,9 @@ namespace DiscordBotPlugin
                         break;
                     case "console":
                         await SendConsoleCommand(command);
-                        await CommandResponse("`" + command.Data.Options.First().Options.First().Value.ToString() + "` console ", command);
-                        await command.RespondAsync("Command sent to the server: `" + command.Data.Options.First().Options.First().Value.ToString() + "`", ephemeral: true);
+                        string consoleCommand = command.Data.Options.First().Options.First().Value.ToString();
+                        await CommandResponse("`" + consoleCommand + "` console ", command);
+                        await command.RespondAsync("Command sent to the server: `" + consoleCommand + "`", ephemeral: true);
                         break;
                     case "full-playtime-list":
                         if (command.Data.Options.First().Options.Count > 0)
@@ -1571,16 +1627,15 @@ namespace DiscordBotPlugin
                                 await command.RespondAsync(playTime, ephemeral: true);
                             }
 
-                            //await command.User.SendMessageAsync(playTime);
+                            // await command.User.SendMessageAsync(playTime);
                         }
                         break;
                 }
-
             }
             else
             {
-                //no bot prefix
-                //leaderboard permissionless
+                // No bot prefix
+                // Leaderboard permissionless
                 if (command.Data.Name.Equals("show-playtime"))
                 {
                     if (command.Data.Options.Count > 0)
@@ -1596,12 +1651,15 @@ namespace DiscordBotPlugin
                     }
                     return;
                 }
-                //init bool for permission check
+
+                // Initialize bool for permission check
                 bool hasServerPermission = false;
 
                 if (command.User is SocketGuildUser user)
-                    //The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+                {
+                    // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
                     hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+                }
 
                 if (!hasServerPermission)
                 {
@@ -1612,15 +1670,8 @@ namespace DiscordBotPlugin
                 switch (command.Data.Name)
                 {
                     case "info":
-                        if (command.Data.Options.Count > 0)
-                        {
-                            bool buttonless = Convert.ToBoolean(command.Data.Options.First().Value.ToString());
-                            await GetServerInfo(false, command, buttonless);
-                        }
-                        else
-                        {
-                            await GetServerInfo(false, command, false);
-                        }
+                        bool buttonless = command.Data.Options.Count > 0 && Convert.ToBoolean(command.Data.Options.First().Value.ToString());
+                        await GetServerInfo(false, command, buttonless);
                         await command.RespondAsync("Info panel created", ephemeral: true);
                         break;
                     case "start-server":
@@ -1696,13 +1747,16 @@ namespace DiscordBotPlugin
                                 await command.RespondAsync(playTime, ephemeral: true);
                             }
 
-                            //await command.User.SendMessageAsync(playTime);
+                            // await command.User.SendMessageAsync(playTime);
                         }
                         break;
                 }
             }
         }
 
+        /// <summary>
+        /// Represents player playtime information.
+        /// </summary>
         public class PlayerPlayTime
         {
             public string PlayerName { get; set; }
@@ -1710,17 +1764,24 @@ namespace DiscordBotPlugin
             public DateTime LeaveTime { get; set; }
         }
 
+        /// <summary>
+        /// Retrieves the event channel from the specified guild by ID or name.
+        /// </summary>
+        /// <param name="guildID">The ID of the guild.</param>
+        /// <param name="channel">The ID or name of the channel.</param>
+        /// <returns>The event channel if found; otherwise, null.</returns>
         private SocketGuildChannel GetEventChannel(ulong guildID, string channel)
         {
             SocketGuildChannel eventChannel;
 
-            //try by ID first
+            // Try by ID first
             try
             {
                 eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Id == Convert.ToUInt64(channel));
             }
             catch
             {
+                // If the ID retrieval fails, try by name
                 eventChannel = _client.GetGuild(guildID).Channels.FirstOrDefault(x => x.Name == channel);
             }
 
