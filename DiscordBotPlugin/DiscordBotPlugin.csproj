@@ -84,7 +84,7 @@
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.6.0.0\lib\net461\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
     </Reference>
     <Reference Include="ModuleShared">
-      <HintPath>H:\AMPDatastore\Instances\ConanExiles01\ModuleShared.dll</HintPath>
+      <HintPath>H:\AMPDatastore\Instances\Minecraft01\ModuleShared.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
