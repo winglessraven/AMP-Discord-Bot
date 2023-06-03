@@ -1,7 +1,12 @@
 
 # AMP Discord Bot Plugin
 
-A Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status in a dynamically updating info panel along with the ability to manage the server directly from Discord (start / stop / restart / kill / update) via buttons and commands.
+A full featured Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status in a dynamically updating info panel along with the ability to manage the server directly from Discord. 
+* Use buttons or commands to start/stop/restart/kill/update/manage.
+* Send console commands directly from Discord to your server.
+* Send server output to a Discord channel.
+* Track playtime of players.
+* Assign permissions to a role so only select members can manage the server.
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
@@ -95,6 +100,13 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
 |Display Playtime Leaderboard|Toggle the playtime leaderboard on the info panel|
 |Remove Bot Name|Removes the bot name from the base command to allow granular permissions from within the Discord server settings|
+|Additional Embed Field Title|Add an additional field in the info panel embed, put your title here|
+|Additional Embed Field Text|Add an additional field in the info panel embed, put your content here|
+|Send Chat to Discord|Send chat messages to a Discord channel|
+|Chat Discord Channel|Discord channel name to send chat messages to (if enabled)|
+|Send Chat from Discord to Server|Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)|
+|Send Console to Discord|Send console output to a Discord channel|
+|Console Discord Channel|Discord channel name to send console output to (if enabled)|
 
 ## AMP Discord Bot Colours
 The `Discord Bot Colours` section give you the ability to change the colour of your embedded messages in Discord.  For each option you want to change insert the hex colour code required.
