@@ -65,6 +65,14 @@ namespace DiscordBotPlugin
                 string clean = e.Message.Replace("`", "'");
                 _ = ChatMessageSend(clean);
             }
+
+            if ((e.Level == LogLevels.Console.ToString() || e.Level == LogLevels.Chat.ToString()) && _settings.MainSettings.SendConsoleToDiscord &&
+                !string.IsNullOrEmpty(_settings.MainSettings.ConsoleToDiscordChannel))
+            {
+                // Clean the message to avoid code blocks and send it to Discord
+                string clean = e.Message.Replace("`", "'");
+                _ = ConsoleOutputSend(clean);
+            }
         }
 
         /// <summary>
@@ -742,6 +750,30 @@ namespace DiscordBotPlugin
             {
                 // Find the text channel with the specified name
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ChatToDiscordChannel);
+
+                if (channel != null)
+                {
+                    // Send the message to the channel
+                    await _client.GetGuild(guild.Id).GetTextChannel(channel.Id).SendMessageAsync("`" + Message + "`");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends console output to the specified text channel in each guild the bot is a member of.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        private async Task ConsoleOutputSend(string Message)
+        {
+            // Get all guilds the bot is a member of
+            var guilds = _client.Guilds;
+
+            // Iterate over each guild
+            foreach (SocketGuild guild in guilds)
+            {
+                // Find the text channel with the specified name
+                var channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ConsoleToDiscordChannel);
 
                 if (channel != null)
                 {
