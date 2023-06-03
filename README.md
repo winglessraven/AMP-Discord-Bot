@@ -58,7 +58,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 
 ### Create the Bot
 * Click `Bot` on the menu bar along the left, then click `Add Bot`
-* Give your bot an icon and enable `Server Members Intent` – this is to ensure that cached member groups are not used if using permissions for controlling servers (start/stop/update/restart/kill)
+* Give your bot an icon and enable `Server Members Intent` (this is to ensure that cached member groups are not used if using permissions for controlling servers (start/stop/update/restart/kill)) AND `Message Content Intent` (this is for writing chat messages back to Minecraft servers if enabled)
 * Save your changes
 * Copy your bot token and paste it in the token field of the Discord Bot menu in AMP
 
@@ -96,7 +96,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Display Update Button|Toggle the update button on the info panel|
 |Display Manage Button|Toggle the manage button on the info panel|
 |Display Online Player List|Show a list of online players in the info panel (if supported)|
-|Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)|
+|Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text))|
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
 |Display Playtime Leaderboard|Toggle the playtime leaderboard on the info panel|
 |Remove Bot Name|Removes the bot name from the base command to allow granular permissions from within the Discord server settings|
