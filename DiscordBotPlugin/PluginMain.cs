@@ -749,12 +749,13 @@ namespace DiscordBotPlugin
             foreach (SocketGuild guild in guilds)
             {
                 // Find the text channel with the specified name
-                var channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ChatToDiscordChannel);
+                var guildID = guild.Id;
+                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ConsoleToDiscordChannel);
 
-                if (channel != null)
+                if (eventChannel != null)
                 {
                     // Send the message to the channel
-                    await _client.GetGuild(guild.Id).GetTextChannel(channel.Id).SendMessageAsync("`" + Message + "`");
+                    await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync("`" + Message + "`");
                 }
             }
         }
@@ -773,12 +774,13 @@ namespace DiscordBotPlugin
             foreach (SocketGuild guild in guilds)
             {
                 // Find the text channel with the specified name
-                var channel = guild.TextChannels.FirstOrDefault(x => x.Name == _settings.MainSettings.ConsoleToDiscordChannel);
+                var guildID = guild.Id;
+                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ConsoleToDiscordChannel);
 
-                if (channel != null)
+                if (eventChannel != null)
                 {
                     // Send the message to the channel
-                    await _client.GetGuild(guild.Id).GetTextChannel(channel.Id).SendMessageAsync("`" + Message + "`");
+                    await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync("`" + Message + "`");
                 }
             }
         }

@@ -109,7 +109,7 @@ namespace DiscordBotPlugin
             [WebSetting("Send Chat to Discord", "Send chat messages to a Discord channel", false)]
             public bool SendChatToDiscord = false;
 
-            [WebSetting("Chat Discord Channel", "Discord channel name to send chat messages to (if enabled)", false)]
+            [WebSetting("Chat Discord Channel", "Discord channel name (or ID) to send chat messages to (if enabled)", false)]
             public string ChatToDiscordChannel = "";
 
             [WebSetting("Send Chat from Discord to Server", "Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)", false)]
@@ -118,7 +118,7 @@ namespace DiscordBotPlugin
             [WebSetting("Send Console to Discord", "Send console output to a Discord channel",false)]
             public bool SendConsoleToDiscord;
 
-            [WebSetting("Console Discord Channel", "Discord channel name to send console output to (if enabled)", false)]
+            [WebSetting("Console Discord Channel", "Discord channel name (or ID) to send console output to (if enabled)", false)]
             public string ConsoleToDiscordChannel = "";
 
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
