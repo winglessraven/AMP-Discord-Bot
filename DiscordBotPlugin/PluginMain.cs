@@ -25,6 +25,7 @@ namespace DiscordBotPlugin
         private readonly IConfigSerializer _config;
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
+        private List<String> consoleOutput = new List<String>();
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
             IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo)
@@ -71,7 +72,7 @@ namespace DiscordBotPlugin
             {
                 // Clean the message to avoid code blocks and send it to Discord
                 string clean = e.Message.Replace("`", "'");
-                _ = ConsoleOutputSend(clean);
+                consoleOutput.Add(clean);
             }
         }
 
@@ -197,6 +198,9 @@ namespace DiscordBotPlugin
             // Login and start the Discord client
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
+
+            //console output
+            await ConsoleOutputSend();
 
             // Set the bot's status
             await SetStatus();
@@ -750,7 +754,7 @@ namespace DiscordBotPlugin
             {
                 // Find the text channel with the specified name
                 var guildID = guild.Id;
-                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ConsoleToDiscordChannel);
+                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ChatToDiscordChannel);
 
                 if (eventChannel != null)
                 {
@@ -765,25 +769,92 @@ namespace DiscordBotPlugin
         /// </summary>
         /// <param name="message">The message to send.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        private async Task ConsoleOutputSend(string Message)
+        private async Task ConsoleOutputSend()
         {
-            // Get all guilds the bot is a member of
-            var guilds = _client.Guilds;
-
-            // Iterate over each guild
-            foreach (SocketGuild guild in guilds)
+            while (_settings.MainSettings.SendConsoleToDiscord && _settings.MainSettings.BotActive)
             {
-                // Find the text channel with the specified name
-                var guildID = guild.Id;
-                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ConsoleToDiscordChannel);
-
-                if (eventChannel != null)
+                if (consoleOutput.Count > 0)
                 {
-                    // Send the message to the channel
-                    await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync("`" + Message + "`");
+                    try
+                    {
+                        // Create a duplicate list of console output messages
+                        List<string> messages = new List<string>(consoleOutput);
+                        consoleOutput.Clear();
+
+                        // Split the output into multiple strings, each presented within a code block
+                        List<string> outputStrings = SplitOutputIntoCodeBlocks(messages);
+
+                        // Get all guilds the bot is a member of
+                        var guilds = _client.Guilds;
+
+                        // Iterate over each output string
+                        foreach (string output in outputStrings)
+                        {
+                            // Iterate over each guild
+                            foreach (SocketGuild guild in guilds)
+                            {
+                                // Find the text channel with the specified name
+                                var guildID = guild.Id;
+                                var eventChannel = GetEventChannel(guildID, _settings.MainSettings.ConsoleToDiscordChannel);
+
+                                if (eventChannel != null)
+                                {
+                                    // Send the message to the channel
+                                    await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(output);
+                                }
+                            }
+                        }
+
+                        // Clear the duplicate list
+                        messages.Clear();
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error(ex.Message);
+                    }
                 }
+
+                // Delay the execution for 10 seconds
+                await Task.Delay(10000);
             }
         }
+
+        private List<string> SplitOutputIntoCodeBlocks(List<string> messages)
+        {
+            const int MaxCodeBlockLength = 2000; // Maximum length of a code block in Discord
+
+            List<string> outputStrings = new List<string>(); // List to store the split output strings
+
+            string currentString = ""; // Current string being built
+            foreach (string message in messages)
+            {
+                // Check if adding the next message will exceed the maximum code block length
+                if (currentString.Length + Environment.NewLine.Length + message.Length + 6 > MaxCodeBlockLength)
+                {
+                    // Add the current string to the list of output strings
+                    outputStrings.Add($"```{currentString}```");
+
+                    // Reset the current string to start building a new one
+                    currentString = "";
+                }
+
+                // Add the message to the current string, separated by a newline character
+                if (!string.IsNullOrEmpty(currentString))
+                {
+                    currentString += Environment.NewLine;
+                }
+                currentString += message;
+            }
+
+            // Add the last current string to the list of output strings
+            if (!string.IsNullOrEmpty(currentString))
+            {
+                outputStrings.Add($"```{currentString}```");
+            }
+
+            return outputStrings;
+        }
+
 
         /// <summary>
         /// Handles button response and logs the command if enabled in settings.
