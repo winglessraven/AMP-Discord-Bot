@@ -184,6 +184,9 @@ namespace DiscordBotPlugin
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
             }
 
+            if(_settings.MainSettings.DiscordDebugMode)
+                config.LogLevel = LogSeverity.Verbose;
+
             // Initialize Discord client with the specified configuration
             _client = new DiscordSocketClient(config);
 

@@ -121,6 +121,9 @@ namespace DiscordBotPlugin
             [WebSetting("Console Discord Channel", "Discord channel name (or ID) to send console output to (if enabled)", false)]
             public string ConsoleToDiscordChannel = "";
 
+            [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false)]
+            public bool DiscordDebugMode = false;
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }
