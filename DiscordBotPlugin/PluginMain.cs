@@ -177,15 +177,17 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
             {
                 // Include MessageContent intent if chat is sent between Discord and the server
-                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
+                config = new DiscordSocketConfig { GatewayIntents = (GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent) };
             }
             else
             {
-                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
+                config = new DiscordSocketConfig { GatewayIntents = (GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds) };
             }
 
             if(_settings.MainSettings.DiscordDebugMode)
-                config.LogLevel = LogSeverity.Verbose;
+                config.LogLevel = LogSeverity.Debug;
+
+            config.GatewayHost = "wss://gateway.discord.gg";
 
             // Initialize Discord client with the specified configuration
             _client = new DiscordSocketClient(config);
