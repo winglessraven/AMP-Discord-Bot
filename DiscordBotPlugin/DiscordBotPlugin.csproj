@@ -43,7 +43,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI_Build|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\CI_Build\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;DEBUG_PACKETS;</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>

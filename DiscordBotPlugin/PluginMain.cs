@@ -177,17 +177,17 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.SendChatToDiscord || _settings.MainSettings.SendDiscordChatToServer)
             {
                 // Include MessageContent intent if chat is sent between Discord and the server
-                config = new DiscordSocketConfig { GatewayIntents = (GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent) };
+                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
             }
             else
             {
-                config = new DiscordSocketConfig { GatewayIntents = (GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds) };
+                config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
             }
 
             if(_settings.MainSettings.DiscordDebugMode)
                 config.LogLevel = LogSeverity.Debug;
 
-            config.GatewayHost = "wss://gateway.discord.gg";
+            //config.GatewayHost = "wss://gateway.discord.gg";
 
             // Initialize Discord client with the specified configuration
             _client = new DiscordSocketClient(config);
@@ -204,11 +204,11 @@ namespace DiscordBotPlugin
             await _client.LoginAsync(TokenType.Bot, BotToken);
             await _client.StartAsync();
 
-            //console output
-            await ConsoleOutputSend();
-
             // Set the bot's status
-            await SetStatus();
+            _ = SetStatus();
+
+            //console output
+            _ = ConsoleOutputSend();
 
             // Block this task until the program is closed or bot is stopped.
             await Task.Delay(-1);
@@ -652,14 +652,18 @@ namespace DiscordBotPlugin
 
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
+                    await _client.SetActivityAsync(new CustomStatusGame("Status"));
+
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
                     {
-                        await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.Playing);
+                        //await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.CustomStatus);
+                        await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
                     }
                     else
                     {
-                        await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
+                        //await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
+                        await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
                     }
 
                     await _client.SetStatusAsync(status);
