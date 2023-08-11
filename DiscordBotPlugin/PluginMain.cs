@@ -652,8 +652,6 @@ namespace DiscordBotPlugin
 
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
 
-                    await _client.SetActivityAsync(new CustomStatusGame("Status"));
-
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
                     {
