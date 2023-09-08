@@ -27,6 +27,9 @@ namespace DiscordBotPlugin
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
 
+        //game specific variables
+        private string valheimJoinCode;
+
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
             IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo)
         {
@@ -73,6 +76,22 @@ namespace DiscordBotPlugin
                 // Clean the message to avoid code blocks and send it to Discord
                 string clean = e.Message.Replace("`", "'");
                 consoleOutput.Add(clean);
+            }
+
+            if (e.Level == LogLevels.Console.ToString() && _settings.GameSpecificSettings.ValheimJoinCode)
+            {
+                // Define the regular expression pattern to match the desired text and extract the numbers.
+                string pattern = @"join code (\d+)";
+
+                // Use Regex.Match to search for a match of the pattern in the message.
+                Match match = Regex.Match(e.Message, pattern);
+
+                // Check if a match was found.
+                if (match.Success)
+                {
+                    // Extract the captured numbers from the match and store them in the valheimJoinCode variable.
+                    valheimJoinCode = match.Groups[1].Value;
+                }
             }
         }
 
@@ -411,6 +430,12 @@ namespace DiscordBotPlugin
             {
                 string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false);
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
+            }
+
+            //if valheim join code enabled and code is logged
+            if(_settings.GameSpecificSettings.ValheimJoinCode && valheimJoinCode != "" && application.State == ApplicationState.Ready)
+            {
+                embed.AddField("Server Join Code", "`" + valheimJoinCode + "`");
             }
 
             //if user has added an additonal embed field, add it

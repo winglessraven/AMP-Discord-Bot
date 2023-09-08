@@ -1,6 +1,7 @@
 ﻿using ModuleShared;
 using System;
 using System.Collections.Generic;
+using System.Net.Configuration;
 
 namespace DiscordBotPlugin
 {
@@ -167,5 +168,13 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotColoursSettings ColourSettings = new DiscordBotColoursSettings();
+
+        public class DiscordBotGameSpecificSettings : SettingSectionStore
+        {
+            [WebSetting("Valheim Join Code", "Look for Valheim join code and display it in the info panel (restart the server after enabling)", false)]
+                public bool ValheimJoinCode = false;
+        }
+
+        public DiscordBotGameSpecificSettings GameSpecificSettings = new DiscordBotGameSpecificSettings();
     }
 }
