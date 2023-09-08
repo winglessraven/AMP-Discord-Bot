@@ -110,3 +110,10 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 
 ## AMP Discord Bot Colours
 The `Discord Bot Colours` section give you the ability to change the colour of your embedded messages in Discord.  For each option you want to change insert the hex colour code required.
+
+## AMP Discord Bot Game Specific
+The `Discord Bot Game Specific` section is for game specific settings. These will be added over time as requested.
+
+| Option | Description                    |
+| ------------- | ------------------------------ |
+|Valheim Join Code|Keep track of the Valheim join code in the console output and add it to the info panel accordingly|
