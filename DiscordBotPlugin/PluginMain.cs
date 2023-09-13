@@ -297,7 +297,7 @@ namespace DiscordBotPlugin
             try
             {
                 // Construct the command to send
-                string command = "say [" + author + "] " + msg;
+                string command = "say <" + author + "> " + msg;
 
                 // Send the chat command to the AMP instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
