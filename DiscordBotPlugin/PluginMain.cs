@@ -368,15 +368,15 @@ namespace DiscordBotPlugin
             }
 
             //set server name field
-            embed.AddField("Server Name", "`" + _settings.MainSettings.ServerDisplayName + "`", true);
+            embed.AddField("Server Name", "```" + _settings.MainSettings.ServerDisplayName + "```", false);
             
             //set server IP field
-            embed.AddField("Server IP", "`" + _settings.MainSettings.ServerConnectionURL + "`", true);
+            embed.AddField("Server IP", "```" + _settings.MainSettings.ServerConnectionURL + "```", false);
 
             //set password field if populated in setttings
             if (_settings.MainSettings.ServerPassword != "")
             {
-                embed.AddField("Server Password", "`" + _settings.MainSettings.ServerPassword + "`", true);
+                embed.AddField("Server Password", "```" + _settings.MainSettings.ServerPassword + "```", false);
             }
 
             //set CPU usage field
@@ -395,7 +395,7 @@ namespace DiscordBotPlugin
             //if there is a valid player count, show the online player count
             if (_settings.MainSettings.ValidPlayerCount)
             {
-                embed.AddField("Player Count", onlinePlayers + "/" + maximumPlayers, true);
+                embed.AddField("Player Count",onlinePlayers + "/" + maximumPlayers, true);
             }
 
             //if show online players is enabled, attempt to get the player names and show them if available
@@ -435,7 +435,7 @@ namespace DiscordBotPlugin
             //if valheim join code enabled and code is logged
             if(_settings.GameSpecificSettings.ValheimJoinCode && valheimJoinCode != "" && application.State == ApplicationState.Ready)
             {
-                embed.AddField("Server Join Code", "`" + valheimJoinCode + "`");
+                embed.AddField("Server Join Code", "```" + valheimJoinCode + "```");
             }
 
             //if user has added an additonal embed field, add it
