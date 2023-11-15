@@ -8,15 +8,15 @@ A full featured Discord bot plugin for [AMP by Cubecoders](https://cubecoders.co
 * Track playtime of players.
 * Assign permissions to a role so only select members can manage the server.
 
+> **NOTE:** The plugin cannot be used on ADS. It can only run on non-ADS instances.
+
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
 **Any known issues and workarounds can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Known-Issues)**
 
 **If you appreciate my work on this plugin, feel free to buy me a beer to keep me fueled up [here](https://www.paypal.com/donate/?business=JAYRTVPHT5CG8&no_recurring=0&currency_code=GBP)**
 
-
-
-![Bot Info Example](https://images2.imgbox.com/69/1b/o2IQILvX_o.png "Bot Info Example")
+![Bot Info Example](https://github.com/winglessraven/AMP-Discord-Bot/assets/4540397/bc692d6e-8dad-4417-a348-1639c1bcbdd7 "Bot Info Example")
 
 # Command Reference
 | Command | Description                    |
