@@ -383,7 +383,7 @@ namespace DiscordBotPlugin
             embed.AddField("CPU Usage", application.GetCPUUsage() + "%", true);
 
             //set mem usage field
-            embed.AddField("Memory Usage", application.GetRAMUsage() + "MB", true);
+            embed.AddField("Memory Usage", application.GetRAMUsage().ToString("N0") + "MB", true);
 
             //if server is online, get the uptime info and set the field accordingly
             if (application.State == ApplicationState.Ready)
