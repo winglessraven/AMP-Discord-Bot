@@ -16,7 +16,7 @@ A full featured Discord bot plugin for [AMP by Cubecoders](https://cubecoders.co
 
 **If you appreciate my work on this plugin, feel free to buy me a beer to keep me fueled up [here](https://www.paypal.com/donate/?business=JAYRTVPHT5CG8&no_recurring=0&currency_code=GBP)**
 
-![Bot Info Example](https://github.com/winglessraven/AMP-Discord-Bot/assets/4540397/bc692d6e-8dad-4417-a348-1639c1bcbdd7 "Bot Info Example")
+![Bot Info Example](https://github.com/winglessraven/AMP-Discord-Bot/assets/4540397/065570c1-df8b-45b0-bba8-0879d0c38795 "Bot Info Example")
 
 # Command Reference
 | Command | Description                    |
