@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Info Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        setTimeout(function(){
+            location.reload();
+        }, 30000);
+    </script>
+</head>
+<body>
+
+<div class="server-info">
+    <div class="status">
+        <h2>Server Status</h2>
+        <p class="{{statusClass}}">{{status}}</p>
+    </div>
+    <div class="details">
+    <h2>Server Name</h2>
+    <code id="server-name" onclick="copyToClipboard('server-name')">{{serverName}}</code>
+</div>
+<div class="details">
+    <h2>Server IP</h2>
+    <code id="server-ip" onclick="copyToClipboard('server-ip')">{{serverIP}}</code>
+</div>
+    <div class="flex-container">
+        <div class="flex-item">
+            <h2>CPU Usage</h2>
+            <p>{{cpuUsage}}</p>
+        </div>
+        <div class="flex-item">
+            <h2>Memory Usage</h2>
+            <p>{{memoryUsage}}</p>
+        </div>
+        <div class="flex-item">
+            <h2>Uptime</h2>
+            <p id="uptime">{{uptime}}</p>
+        </div>
+    </div>
+	<div class="flex-container">
+    <div class="flex-item">
+        <h2>Player Count</h2>
+        <p>{{playerCount}}</p>
+		</div>
+    </div>
+    <div class="details">
+        <h2>Top 5 Players by Play Time</h2>
+        <ol>
+            {{playtimeLeaderboard}}
+        </ol>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -11,6 +11,11 @@ using Discord.Net;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Text;
+using DiscordBotPlugin;
+using System.Threading;
+using System.Diagnostics;
+using Newtonsoft.Json;
+using System.Resources;
 
 namespace DiscordBotPlugin
 {
@@ -26,6 +31,9 @@ namespace DiscordBotPlugin
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
+
+        //webserver
+        string webPanelPath = Path.Combine(Environment.CurrentDirectory, "WebRoot","WebPanel");
 
         //game specific variables
         private string valheimJoinCode;
@@ -177,7 +185,7 @@ namespace DiscordBotPlugin
                         // Log any errors that occur during bot connection
                         log.Error("Error with the Discord Bot: " + exception.Message);
                     }
-                }
+                }                
             }
         }
 
@@ -228,6 +236,9 @@ namespace DiscordBotPlugin
 
             //console output
             _ = ConsoleOutputSend();
+
+            // Web Panel
+            _ = UpdateWebPanel();
 
             // Block this task until the program is closed or bot is stopped.
             await Task.Delay(-1);
@@ -592,6 +603,102 @@ namespace DiscordBotPlugin
 
                 //save the newly added info message details
                 _config.Save(_settings);
+            }
+        }
+
+        private async Task UpdateWebPanel()
+        {
+            //Update web panel if it is enabled
+            while (_settings.WebPanelSettings.enableWebPanel)
+            {
+                if (!Directory.Exists(webPanelPath))
+                {
+                    // Create the directory if it doesn't exist
+                    Directory.CreateDirectory(webPanelPath);
+                }
+
+                // Define the file paths
+                string scriptFilePath = Path.Combine(webPanelPath, "script.js");
+                string stylesFilePath = Path.Combine(webPanelPath, "styles.css");
+                string panelFilePath = Path.Combine(webPanelPath, "panel.html");
+
+                // Write content to the files
+                ResourceReader reader = new ResourceReader();
+
+                File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
+                File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
+                File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
+
+                // Read the template and variables
+                string htmlTemplate = reader.ReadResource("panel.html");
+                string jsonVariables = reader.ReadResource("variables.json");
+
+
+                //variables
+                // Get the CPU usage and memory usage
+                var cpuUsage = application.GetCPUUsage();
+                var cpuUsageString = cpuUsage + "%";
+                var memUsage = application.GetRAMUsage();
+
+                //get count of players online and maximum slots
+                IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+                var onlinePlayers = hasSimpleUserList.Users.Count;
+                var maximumPlayers = hasSimpleUserList.MaxUsers;
+
+                //if server is online
+                if (application.State == ApplicationState.Ready)
+                {
+                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "✅ " + GetApplicationStateString());
+                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "ready");
+                }
+                //if server is off or errored
+                else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
+                {
+                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "⛔ " + GetApplicationStateString());
+                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "stopped");
+                }
+                //everything else
+                else
+                {
+                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "⏳ " + GetApplicationStateString());
+                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "pending");
+                }
+
+                //set server name field
+                htmlTemplate = htmlTemplate.Replace($"{{{{serverName}}}}", _settings.MainSettings.ServerDisplayName);
+
+                //set server IP field
+                htmlTemplate = htmlTemplate.Replace($"{{{{serverIP}}}}", _settings.MainSettings.ServerConnectionURL);
+
+                //set CPU usage field
+                htmlTemplate = htmlTemplate.Replace($"{{{{cpuUsage}}}}", application.GetCPUUsage() + "%");
+
+                //set mem usage field
+                htmlTemplate = htmlTemplate.Replace($"{{{{memoryUsage}}}}", application.GetRAMUsage().ToString("N0") + "MB");
+
+                //if server is online, get the uptime info and set the field accordingly
+                if (application.State == ApplicationState.Ready)
+                {
+                    TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
+                    htmlTemplate = htmlTemplate.Replace($"{{{{uptime}}}}",string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds));
+                }
+
+                //if there is a valid player count, show the online player count
+                if (_settings.MainSettings.ValidPlayerCount)
+                {
+                    htmlTemplate = htmlTemplate.Replace($"{{{{playerCount}}}}", onlinePlayers + "/" + maximumPlayers);
+                }
+
+                try
+                {
+                    File.WriteAllText(panelFilePath, htmlTemplate);
+                }
+                catch(Exception ex)
+                {
+                    log.Error("Exception writing html:" + ex.Message);
+                }
+                // Delay the execution for 30 seconds
+                await Task.Delay(30000);
             }
         }
 
