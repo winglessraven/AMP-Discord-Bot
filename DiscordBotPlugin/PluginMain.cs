@@ -629,10 +629,8 @@ namespace DiscordBotPlugin
                 File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
                 File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
 
-                // Read the template and variables
+                // Read the template
                 string htmlTemplate = reader.ReadResource("panel.html");
-                string jsonVariables = reader.ReadResource("variables.json");
-
 
                 //variables
                 // Get the CPU usage and memory usage
