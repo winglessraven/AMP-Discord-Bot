@@ -609,7 +609,7 @@ namespace DiscordBotPlugin
         private async Task UpdateWebPanel()
         {
             //Update web panel if it is enabled
-            while (_settings.WebPanelSettings.enableWebPanel)
+            while (_settings.MainSettings.EnableWebPanel)
             {
                 if (!Directory.Exists(webPanelPath))
                 {
@@ -695,8 +695,8 @@ namespace DiscordBotPlugin
                 {
                     log.Error("Exception writing html:" + ex.Message);
                 }
-                // Delay the execution for 30 seconds
-                await Task.Delay(30000);
+                // Delay the execution for 10 seconds
+                await Task.Delay(10000);
             }
         }
 

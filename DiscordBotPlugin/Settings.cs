@@ -125,6 +125,9 @@ namespace DiscordBotPlugin
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false)]
             public bool DiscordDebugMode = false;
 
+            [WebSetting("Enable Web Panel", "Enable a web panel on the specified port for embedding onto a website", false)]
+            public bool EnableWebPanel = false;
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }
@@ -176,16 +179,5 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotGameSpecificSettings GameSpecificSettings = new DiscordBotGameSpecificSettings();
-
-        public class DiscordBotWebPanelSettings : SettingSectionStore
-        {
-            [WebSetting("Enable Web Panel", "Enable a web panel on the specified port for embedding onto a website", false)]
-            public bool enableWebPanel = false;
-
-            [WebSetting("Web Panel Port", "Port number to run the web panel on", false)]
-            public int webPanelPort = 9001;
-        }
-
-        public DiscordBotWebPanelSettings WebPanelSettings = new DiscordBotWebPanelSettings();
     }
 }
