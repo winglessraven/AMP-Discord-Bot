@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using System.Resources;
 using System.Reactive.Joins;
 using System.Numerics;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace DiscordBotPlugin
 {
@@ -682,7 +683,10 @@ namespace DiscordBotPlugin
                     TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
                     htmlTemplate = htmlTemplate.Replace($"{{{{uptime}}}}", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds));
                 }
-
+                else
+                {
+                    htmlTemplate = htmlTemplate.Replace($"{{{{uptime}}}}", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0,0,0,0));
+                }
                 if (onlinePlayers > 0 && _settings.MainSettings.ShowOnlinePlayers)
                 {
                     List<string> onlinePlayerNames = new List<string>();
