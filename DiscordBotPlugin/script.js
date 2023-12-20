@@ -48,10 +48,13 @@ function updateUptime() {
 
 setInterval(updateUptime, 1000); // Call updateUptime every second
 
+let currentData = {}; // Variable to store the latest fetched data
+
 function fetchDataAndUpdateUI() {
     fetch('panel.json')
         .then(response => response.json())
         .then(data => {
+            currentData = data; // Store the latest data
             updateUI(data);
         })
         .catch(error => console.error('Error fetching data:', error));
@@ -67,9 +70,10 @@ function updateUI(data) {
     document.getElementById('memory-usage').textContent = data.MemoryUsage;
     document.getElementById('uptime').textContent = data.Uptime;
 
-    // Update Online Players
+    console.log("Updating Online Players in UI");
     const onlinePlayersContainer = document.getElementById('online-players-container');
     if (data.OnlinePlayers && data.OnlinePlayers.length > 0) {
+        console.log(`Online players from JSON: ${data.OnlinePlayers.join(', ')}`);
         onlinePlayersContainer.style.display = 'block';
         const onlinePlayersList = onlinePlayersContainer.querySelector('.flex-item');
         onlinePlayersList.innerHTML = '<h2>Online Players</h2>' + data.OnlinePlayers.map(player => `<p>${player}</p>`).join('');
@@ -93,17 +97,50 @@ function updateUI(data) {
     }
 }
 
+// Function to increment player playtime in 'Xd Xh Xm Xs' format
+function incrementPlayerPlaytime(playtimeString) {
+    let [days, hours, minutes, seconds] = playtimeString.split(/d |h |m |s/).map(Number);
+    seconds++;
+    if (seconds >= 60) {
+        seconds = 0;
+        minutes++;
+        if (minutes >= 60) {
+            minutes = 0;
+            hours++;
+            if (hours >= 24) {
+                hours = 0;
+                days++;
+            }
+        }
+    }
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
 // Function to increment playtime for online players
 function incrementPlaytimeForOnlinePlayers() {
-    const onlinePlayers = document.querySelectorAll('#online-players .flex-item p');
-    onlinePlayers.forEach(playerElement => {
-        const playerName = playerElement.textContent.trim();
+    //console.log("incrementPlaytimeForOnlinePlayers function called");
+
+    if (!currentData.OnlinePlayers || currentData.OnlinePlayers.length === 0) {
+        //console.log("No online players found");
+        return;
+    }
+
+    //console.log(`Found ${currentData.OnlinePlayers.length} online players from JSON`);
+
+    currentData.OnlinePlayers.forEach(playerName => {
+        //console.log(`Processing player: ${playerName}`);
         const playtimeElements = document.querySelectorAll('#playtime-leaderboard li');
+        //console.log(`Found ${playtimeElements.length} playtime elements`);
+
         playtimeElements.forEach(playtimeElement => {
+            //console.log(`Checking playtime element: ${playtimeElement.textContent}`);
+
             if (playtimeElement.textContent.includes(playerName)) {
+                //console.log(`Before Increment - Player: ${playerName}, Playtime: ${playtimeElement.textContent}`);
                 const parts = playtimeElement.textContent.split(' - ');
-                const incrementedPlaytime = incrementTime(parts[1]);
+                const incrementedPlaytime = incrementPlayerPlaytime(parts[1].trim());
                 playtimeElement.textContent = `${playerName} - ${incrementedPlaytime}`;
+                //console.log(`After Increment - Player: ${playerName}, Playtime: ${playtimeElement.textContent}`);
             }
         });
     });
