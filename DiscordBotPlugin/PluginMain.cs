@@ -19,6 +19,7 @@ using System.Resources;
 using System.Reactive.Joins;
 using System.Numerics;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
+//using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace DiscordBotPlugin
 {
@@ -34,9 +35,6 @@ namespace DiscordBotPlugin
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
-
-        //webserver
-        string webPanelPath = Path.Combine(Environment.CurrentDirectory, "WebRoot", "WebPanel");
 
         //game specific variables
         private string valheimJoinCode;
@@ -241,7 +239,7 @@ namespace DiscordBotPlugin
             _ = ConsoleOutputSend();
 
             // Web Panel
-            _ = UpdateWebPanel();
+            _ = UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
 
             // Block this task until the program is closed or bot is stopped.
             await Task.Delay(-1);
@@ -609,8 +607,10 @@ namespace DiscordBotPlugin
             }
         }
 
-        private async Task UpdateWebPanel()
+        private async Task UpdateWebPanel(string webPanelPath)
         {
+            log.Info(webPanelPath);
+
             //Update web panel if it is enabled
             while (_settings.MainSettings.EnableWebPanel)
             {
@@ -624,70 +624,78 @@ namespace DiscordBotPlugin
                 string scriptFilePath = Path.Combine(webPanelPath, "script.js");
                 string stylesFilePath = Path.Combine(webPanelPath, "styles.css");
                 string panelFilePath = Path.Combine(webPanelPath, "panel.html");
+                string jsonFilePath = Path.Combine(webPanelPath, "panel.json");
 
                 // Write content to the files
                 ResourceReader reader = new ResourceReader();
 
-                File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
-                File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
-                File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
+                if(!File.Exists(scriptFilePath))
+                    File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
 
-                // Read the template
-                string htmlTemplate = reader.ReadResource("panel.html");
+                if(!File.Exists(stylesFilePath))
+                    File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
+
+                if(!File.Exists(panelFilePath))
+                    File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
 
                 //variables
+                string serverName = "";
+                string serverIP = "";
+                string serverStatus = "";
+                string serverStatusClass = "";
+                string cpuUsage = "";
+                string memoryUsage = "";
+                string uptime = "";
+                string[] onlinePlayers = new string[] { };
+                string playerCount = "";
+                string[] playtimeLeaderBoard = new string[] { };
+
                 // Get the CPU usage and memory usage
-                var cpuUsage = application.GetCPUUsage();
-                var cpuUsageString = cpuUsage + "%";
-                var memUsage = application.GetRAMUsage();
+                var cpu = application.GetCPUUsage();
+                cpuUsage = cpu + "%";
+                memoryUsage = application.GetRAMUsage().ToString("N0") + "MB";
 
                 //get count of players online and maximum slots
                 IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
-                var onlinePlayers = hasSimpleUserList.Users.Count;
+                var onlinePlayerCount = hasSimpleUserList.Users.Count;
                 var maximumPlayers = hasSimpleUserList.MaxUsers;
 
                 //if server is online
                 if (application.State == ApplicationState.Ready)
                 {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "✅ " + GetApplicationStateString());
-                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "ready");
+                    serverStatus = "✅ " + GetApplicationStateString();
+                    serverStatusClass = "ready";
                 }
                 //if server is off or errored
                 else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
                 {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "⛔ " + GetApplicationStateString());
-                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "stopped");
+                    serverStatus = "⛔ " + GetApplicationStateString();
+                    serverStatusClass = "stopped";
                 }
                 //everything else
                 else
                 {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{status}}}}", "⏳ " + GetApplicationStateString());
-                    htmlTemplate = htmlTemplate.Replace($"{{{{statusClass}}}}", "pending");
+                    serverStatus = "⏳ " + GetApplicationStateString();
+                    serverStatusClass = "pending";
                 }
 
                 //set server name field
-                htmlTemplate = htmlTemplate.Replace($"{{{{serverName}}}}", _settings.MainSettings.ServerDisplayName);
+                serverName = _settings.MainSettings.ServerDisplayName;
 
                 //set server IP field
-                htmlTemplate = htmlTemplate.Replace($"{{{{serverIP}}}}", _settings.MainSettings.ServerConnectionURL);
-
-                //set CPU usage field
-                htmlTemplate = htmlTemplate.Replace($"{{{{cpuUsage}}}}", application.GetCPUUsage() + "%");
-
-                //set mem usage field
-                htmlTemplate = htmlTemplate.Replace($"{{{{memoryUsage}}}}", application.GetRAMUsage().ToString("N0") + "MB");
+                serverIP = _settings.MainSettings.ServerConnectionURL;
 
                 //if server is online, get the uptime info and set the field accordingly
                 if (application.State == ApplicationState.Ready)
                 {
-                    TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
-                    htmlTemplate = htmlTemplate.Replace($"{{{{uptime}}}}", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds));
+                    TimeSpan up = DateTime.Now.Subtract(application.StartTime);
+                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", up.Days, up.Hours, up.Minutes, up.Seconds);
                 }
                 else
                 {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{uptime}}}}", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0,0,0,0));
+                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0,0,0,0);
                 }
-                if (onlinePlayers > 0 && _settings.MainSettings.ShowOnlinePlayers)
+                if (onlinePlayerCount > 0 && _settings.MainSettings.ShowOnlinePlayers)
                 {
                     List<string> onlinePlayerNames = new List<string>();
                     foreach (SimpleUser user in hasSimpleUserList.Users)
@@ -696,46 +704,41 @@ namespace DiscordBotPlugin
                             onlinePlayerNames.Add(user.Name);
                     }
 
-                    string names = "";
-                    foreach (string s in onlinePlayerNames)
-                    {
-                        names += "<p>" + s + "</p>";
-                        string onlinePlayer = "<div class=\"flex-container\"><div class=\"flex-item\"><h2>Online Players</h2>" + names + "</div></div>";
-                        htmlTemplate = htmlTemplate.Replace($"{{{{onlinePlayers}}}}", onlinePlayer);
-                    }
-
-
-                }
-                else
-                {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{onlinePlayers}}}}", "");
+                    onlinePlayers = onlinePlayerNames.ToArray();
                 }
 
                 //if there is a valid player count, show the online player count
                 if (_settings.MainSettings.ValidPlayerCount)
                 {
-                    string playerCount = "<div class=\"flex-container\"><div class=\"flex-item\"><h2>Player Count</h2><p>" + onlinePlayers + "/" + maximumPlayers + "</p></div></div>";
-                    htmlTemplate = htmlTemplate.Replace($"{{{{playerCount}}}}", playerCount);
-                }
-                else
-                {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{playerCount}}}}", "");
+                    playerCount = onlinePlayerCount + "/" + maximumPlayers;
                 }
 
                 if (_settings.MainSettings.ShowPlaytimeLeaderboard)
                 {
                     string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false, true);
-                    string playtimeLeaderboard = "<div class=\"details\"><h2>Top 5 Players by Play Time</h2><ol>" + leaderboard + "</ol></div>";
-                    htmlTemplate = htmlTemplate.Replace($"{{{{playtimeLeaderboard}}}}", playtimeLeaderboard);
+                    playtimeLeaderBoard = leaderboard.Split(new[] {"\r\n","\n"}, StringSplitOptions.RemoveEmptyEntries);
                 }
-                else
+
+
+                ServerInfo serverInfo = new ServerInfo
                 {
-                    htmlTemplate = htmlTemplate.Replace($"{{{{playtimeLeaderboard}}}}", "");
-                }
+                    ServerName = serverName,
+                    ServerIP = serverIP,
+                    ServerStatus = serverStatus,
+                    ServerStatusClass = serverStatusClass,
+                    CPUUsage = cpuUsage,
+                    MemoryUsage = memoryUsage,
+                    Uptime = uptime,
+                    OnlinePlayers = onlinePlayers,
+                    PlayerCount = playerCount,
+                    PlaytimeLeaderBoard = playtimeLeaderBoard
+                };
+
+                string json = JsonConvert.SerializeObject(serverInfo, Formatting.Indented);
 
                 try
                 {
-                    File.WriteAllText(panelFilePath, htmlTemplate);
+                    File.WriteAllText(jsonFilePath, json);
                 }
                 catch (Exception ex)
                 {
@@ -1553,7 +1556,7 @@ namespace DiscordBotPlugin
                     {
                         if (webPanel)
                         {
-                            leaderboard += "<li>" + player.Key + " - " + string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds) + "</li>" + Environment.NewLine;
+                            leaderboard += player.Key + " - " + string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds) + Environment.NewLine;
                         }
                         else
                         {
@@ -2086,6 +2089,21 @@ namespace DiscordBotPlugin
 
             return eventChannel;
         }
+
+        public class ServerInfo
+        {
+            public string ServerName { get; set; }
+            public string ServerIP { get; set; }
+            public string ServerStatus { get; set; }
+            public string ServerStatusClass { get; set; }
+            public string CPUUsage { get; set; }
+            public string MemoryUsage { get; set; }
+            public string Uptime { get; set; }
+            public string[] OnlinePlayers { get; set; }
+            public string PlayerCount { get; set; }
+            public string[] PlaytimeLeaderBoard { get; set; }
+        }
+
     }
 }
 
