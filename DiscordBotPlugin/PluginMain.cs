@@ -11,6 +11,7 @@ using Discord.Net;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Text;
+using Newtonsoft.Json;
 
 namespace DiscordBotPlugin
 {
@@ -203,7 +204,7 @@ namespace DiscordBotPlugin
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
             }
 
-            if(_settings.MainSettings.DiscordDebugMode)
+            if (_settings.MainSettings.DiscordDebugMode)
                 config.LogLevel = LogSeverity.Debug;
 
             //config.GatewayHost = "wss://gateway.discord.gg";
@@ -228,6 +229,9 @@ namespace DiscordBotPlugin
 
             //console output
             _ = ConsoleOutputSend();
+
+            // Web Panel
+            _ = UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
 
             // Block this task until the program is closed or bot is stopped.
             await Task.Delay(-1);
@@ -369,7 +373,7 @@ namespace DiscordBotPlugin
 
             //set server name field
             embed.AddField("Server Name", "```" + _settings.MainSettings.ServerDisplayName + "```", false);
-            
+
             //set server IP field
             embed.AddField("Server IP", "```" + _settings.MainSettings.ServerConnectionURL + "```", false);
 
@@ -395,7 +399,7 @@ namespace DiscordBotPlugin
             //if there is a valid player count, show the online player count
             if (_settings.MainSettings.ValidPlayerCount)
             {
-                embed.AddField("Player Count",onlinePlayers + "/" + maximumPlayers, true);
+                embed.AddField("Player Count", onlinePlayers + "/" + maximumPlayers, true);
             }
 
             //if show online players is enabled, attempt to get the player names and show them if available
@@ -428,18 +432,18 @@ namespace DiscordBotPlugin
             //if show playtime leaderboard is enabled
             if (_settings.MainSettings.ShowPlaytimeLeaderboard)
             {
-                string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false);
+                string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false, false);
                 embed.AddField("Top 5 Players by Play Time", leaderboard, false);
             }
 
             //if valheim join code enabled and code is logged
-            if(_settings.GameSpecificSettings.ValheimJoinCode && valheimJoinCode != "" && application.State == ApplicationState.Ready)
+            if (_settings.GameSpecificSettings.ValheimJoinCode && valheimJoinCode != "" && application.State == ApplicationState.Ready)
             {
                 embed.AddField("Server Join Code", "```" + valheimJoinCode + "```");
             }
 
             //if user has added an additonal embed field, add it
-            if(_settings.MainSettings.AdditionalEmbedFieldTitle.Length > 0)
+            if (_settings.MainSettings.AdditionalEmbedFieldTitle.Length > 0)
             {
                 embed.AddField(_settings.MainSettings.AdditionalEmbedFieldTitle, _settings.MainSettings.AdditionalEmbedFieldText);
             }
@@ -595,6 +599,148 @@ namespace DiscordBotPlugin
             }
         }
 
+        private async Task UpdateWebPanel(string webPanelPath)
+        {
+            log.Info(webPanelPath);
+
+            //Update web panel if it is enabled
+            while (_settings.MainSettings.EnableWebPanel)
+            {
+                if (!Directory.Exists(webPanelPath))
+                {
+                    // Create the directory if it doesn't exist
+                    Directory.CreateDirectory(webPanelPath);
+                }
+
+                // Define the file paths
+                string scriptFilePath = Path.Combine(webPanelPath, "script.js");
+                string stylesFilePath = Path.Combine(webPanelPath, "styles.css");
+                string panelFilePath = Path.Combine(webPanelPath, "panel.html");
+                string jsonFilePath = Path.Combine(webPanelPath, "panel.json");
+
+                // Write content to the files
+                ResourceReader reader = new ResourceReader();
+
+                if(!File.Exists(scriptFilePath))
+                    File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
+
+                if(!File.Exists(stylesFilePath))
+                    File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
+
+                if(!File.Exists(panelFilePath))
+                    File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
+
+                //variables
+                string serverName = "";
+                string serverIP = "";
+                string serverStatus = "";
+                string serverStatusClass = "";
+                string cpuUsage = "";
+                string memoryUsage = "";
+                string uptime = "";
+                string[] onlinePlayers = new string[] { };
+                string playerCount = "";
+                string[] playtimeLeaderBoard = new string[] { };
+
+                // Get the CPU usage and memory usage
+                var cpu = application.GetCPUUsage();
+                cpuUsage = cpu + "%";
+                memoryUsage = application.GetRAMUsage().ToString("N0") + "MB";
+
+                //get count of players online and maximum slots
+                IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+                var onlinePlayerCount = hasSimpleUserList.Users.Count;
+                var maximumPlayers = hasSimpleUserList.MaxUsers;
+
+                //if server is online
+                if (application.State == ApplicationState.Ready)
+                {
+                    serverStatus = "✅ " + GetApplicationStateString();
+                    serverStatusClass = "ready";
+                }
+                //if server is off or errored
+                else if (application.State == ApplicationState.Failed || application.State == ApplicationState.Stopped)
+                {
+                    serverStatus = "⛔ " + GetApplicationStateString();
+                    serverStatusClass = "stopped";
+                }
+                //everything else
+                else
+                {
+                    serverStatus = "⏳ " + GetApplicationStateString();
+                    serverStatusClass = "pending";
+                }
+
+                //set server name field
+                serverName = _settings.MainSettings.ServerDisplayName;
+
+                //set server IP field
+                serverIP = _settings.MainSettings.ServerConnectionURL;
+
+                //if server is online, get the uptime info and set the field accordingly
+                if (application.State == ApplicationState.Ready)
+                {
+                    TimeSpan up = DateTime.Now.Subtract(application.StartTime);
+                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", up.Days, up.Hours, up.Minutes, up.Seconds);
+                }
+                else
+                {
+                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0,0,0,0);
+                }
+                if (onlinePlayerCount > 0 && _settings.MainSettings.ShowOnlinePlayers)
+                {
+                    List<string> onlinePlayerNames = new List<string>();
+                    foreach (SimpleUser user in hasSimpleUserList.Users)
+                    {
+                        if (user.Name != null && user.Name != "")
+                            onlinePlayerNames.Add(user.Name);
+                    }
+
+                    onlinePlayers = onlinePlayerNames.ToArray();
+                }
+
+                //if there is a valid player count, show the online player count
+                if (_settings.MainSettings.ValidPlayerCount)
+                {
+                    playerCount = onlinePlayerCount + "/" + maximumPlayers;
+                }
+
+                if (_settings.MainSettings.ShowPlaytimeLeaderboard)
+                {
+                    string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false, true);
+                    playtimeLeaderBoard = leaderboard.Split(new[] {"\r\n","\n"}, StringSplitOptions.RemoveEmptyEntries);
+                }
+
+
+                ServerInfo serverInfo = new ServerInfo
+                {
+                    ServerName = serverName,
+                    ServerIP = serverIP,
+                    ServerStatus = serverStatus,
+                    ServerStatusClass = serverStatusClass,
+                    CPUUsage = cpuUsage,
+                    MemoryUsage = memoryUsage,
+                    Uptime = uptime,
+                    OnlinePlayers = onlinePlayers,
+                    PlayerCount = playerCount,
+                    PlaytimeLeaderBoard = playtimeLeaderBoard
+                };
+
+                string json = JsonConvert.SerializeObject(serverInfo, Formatting.Indented);
+
+                try
+                {
+                    File.WriteAllText(jsonFilePath, json);
+                }
+                catch (Exception ex)
+                {
+                    log.Error("Exception writing html:" + ex.Message);
+                }
+                // Delay the execution for 10 seconds
+                await Task.Delay(10000);
+            }
+        }
+
         /// <summary>
         /// Show play time on the server
         /// </summary>
@@ -607,7 +753,7 @@ namespace DiscordBotPlugin
             {
                 Title = "Play Time Leaderboard",
                 ThumbnailUrl = _settings.MainSettings.GameImageURL,
-                Description = GetPlayTimeLeaderBoard(15, false, null, false),
+                Description = GetPlayTimeLeaderBoard(15, false, null, false, false),
                 Color = !string.IsNullOrEmpty(_settings.ColourSettings.PlaytimeLeaderboardColour)
                     ? GetColour("Leaderboard", _settings.ColourSettings.PlaytimeLeaderboardColour)
                     : Color.DarkGrey
@@ -1337,7 +1483,7 @@ namespace DiscordBotPlugin
         /// <param name="playerName">The name of the player (used when playerSpecific is true).</param>
         /// <param name="fullList">Flag indicating if the full leaderboard list should be shown.</param>
         /// <returns>The string representation of the playtime leaderboard.</returns>
-        private string GetPlayTimeLeaderBoard(int placesToShow, bool playerSpecific, string playerName, bool fullList)
+        private string GetPlayTimeLeaderBoard(int placesToShow, bool playerSpecific, string playerName, bool fullList, bool webPanel)
         {
             // Create a new dictionary to hold the logged playtime plus any current session time
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(_settings.MainSettings.PlayTime);
@@ -1376,7 +1522,10 @@ namespace DiscordBotPlugin
             }
             else
             {
-                string leaderboard = "```";
+                string leaderboard = "";
+                if (!webPanel)
+                    leaderboard += "```";
+
                 int position = 1;
 
                 if (fullList)
@@ -1397,12 +1546,20 @@ namespace DiscordBotPlugin
                     }
                     else
                     {
-                        leaderboard += $"{string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds))}{Environment.NewLine}";
+                        if (webPanel)
+                        {
+                            leaderboard += player.Key + " - " + string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds) + Environment.NewLine;
+                        }
+                        else
+                        {
+                            leaderboard += $"{string.Format("{0,-4}{1,-20}{2,-15}", position + ".", player.Key, string.Format("{0}d {1}h {2}m {3}s", player.Value.Days, player.Value.Hours, player.Value.Minutes, player.Value.Seconds))}{Environment.NewLine}";
+                        }
                     }
                     position++;
                 }
 
-                leaderboard += "```";
+                if (!webPanel)
+                    leaderboard += "```";
 
                 return leaderboard;
             }
@@ -1657,7 +1814,7 @@ namespace DiscordBotPlugin
                     if (command.Data.Options.First().Options.Count > 0)
                     {
                         string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false);
+                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false, false);
                         await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                     }
                     else
@@ -1725,12 +1882,12 @@ namespace DiscordBotPlugin
                         if (command.Data.Options.First().Options.Count > 0)
                         {
                             string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true);
+                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true, false);
                             await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                         }
                         else
                         {
-                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
+                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true, false);
                             if (playTime.Length > 2000)
                             {
                                 string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
@@ -1778,7 +1935,7 @@ namespace DiscordBotPlugin
                     if (command.Data.Options.Count > 0)
                     {
                         string playerName = command.Data.Options.First().Value.ToString();
-                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false);
+                        string playTime = GetPlayTimeLeaderBoard(1, true, playerName, false, false);
                         await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                     }
                     else
@@ -1845,12 +2002,12 @@ namespace DiscordBotPlugin
                         if (command.Data.Options.Count > 0)
                         {
                             string playerName = command.Data.Options.First().Value.ToString();
-                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true);
+                            string playTime = GetPlayTimeLeaderBoard(1, true, playerName, true, false);
                             await command.RespondAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
                         }
                         else
                         {
-                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true);
+                            string playTime = GetPlayTimeLeaderBoard(1000, false, null, true, false);
                             if (playTime.Length > 2000)
                             {
                                 string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
@@ -1924,6 +2081,21 @@ namespace DiscordBotPlugin
 
             return eventChannel;
         }
+
+        public class ServerInfo
+        {
+            public string ServerName { get; set; }
+            public string ServerIP { get; set; }
+            public string ServerStatus { get; set; }
+            public string ServerStatusClass { get; set; }
+            public string CPUUsage { get; set; }
+            public string MemoryUsage { get; set; }
+            public string Uptime { get; set; }
+            public string[] OnlinePlayers { get; set; }
+            public string PlayerCount { get; set; }
+            public string[] PlaytimeLeaderBoard { get; set; }
+        }
+
     }
 }
 

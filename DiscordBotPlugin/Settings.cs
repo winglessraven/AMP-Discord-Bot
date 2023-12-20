@@ -125,6 +125,9 @@ namespace DiscordBotPlugin
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false)]
             public bool DiscordDebugMode = false;
 
+            [WebSetting("Enable Web Panel", "Enable a web panel on the specified port for embedding onto a website", false)]
+            public bool EnableWebPanel = false;
+
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
         }

@@ -1,0 +1,16 @@
+{
+  "ServerName": "",
+  "ServerIP": "",
+  "ServerStatus": "",
+  "ServerStatusClass": "",
+  "CPUUsage": "",
+  "MemoryUsage": "",
+  "Uptime": "",
+  "OnlinePlayers": [
+    ""
+  ],
+  "PlayerCount": "",
+  "PlaytimeLeaderBoard": [
+    ""
+  ]
+}
