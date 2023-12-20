@@ -11,15 +11,7 @@ using Discord.Net;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Text;
-using DiscordBotPlugin;
-using System.Threading;
-using System.Diagnostics;
 using Newtonsoft.Json;
-using System.Resources;
-using System.Reactive.Joins;
-using System.Numerics;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
-//using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace DiscordBotPlugin
 {
