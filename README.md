@@ -37,6 +37,7 @@ Web Panel:
 | `/[BOT NAME] console [command]`   | Send a command to the server |
 | `/[BOT NAME] playtime`   | Show playtime leaderboard |
 | `/[BOT NAME] full-playtime-list`   | Show full playtime list with last seen value |
+| `/[BOT NAME] take-backup`   | Send a request to the AMP Panel to create an instance backup |
 
 *Note: If `Remove Bot Name` is enabled in settings then the commands will exclude the name.*
 
@@ -102,6 +103,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Display Kill Button|Toggle the kill button on the info panel|
 |Display Update Button|Toggle the update button on the info panel|
 |Display Manage Button|Toggle the manage button on the info panel|
+|Display Backup Button|Toggle the backup button on the info panel|
 |Display Online Player List|Show a list of online players in the info panel (if supported)|
 |Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text))|
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
