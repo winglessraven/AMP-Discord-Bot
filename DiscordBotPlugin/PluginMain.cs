@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using LocalFileBackupPlugin;
 
 namespace DiscordBotPlugin
 {
@@ -24,15 +25,18 @@ namespace DiscordBotPlugin
         private readonly IApplicationWrapper application;
         private readonly IAMPInstanceInfo aMPInstanceInfo;
         private readonly IConfigSerializer _config;
+        private readonly IFeatureManager features;
+        private readonly BackupProvider backupProvider;
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
+        private SocketMessageComponent currentComponent;
 
         //game specific variables
         private string valheimJoinCode;
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
-            IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo)
+            IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo, IFeatureManager Features, BackupProvider BackupProvider)
         {
             _config = config;
             this.log = log;
@@ -41,6 +45,11 @@ namespace DiscordBotPlugin
             _tasks = taskManager;
             this.application = application;
             aMPInstanceInfo = AMPInstanceInfo;
+            features = Features;
+
+            features.PostLoadPlugin(application,"LocalFileBackupPlugin");
+            features.RegisterFeature(BackupProvider);
+            backupProvider = BackupProvider;
 
             config.SaveMethod = PluginSaveMethod.KVP;
             config.KVPSeparator = "=";
@@ -519,6 +528,10 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.ShowManageButton)
                 builder.WithButton("Manage", "manage-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
 
+            //if backup button required, add it
+            if (_settings.MainSettings.ShowBackupButton)
+                builder.WithButton("Backup", "backup-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+
             //if the message already exists, try to update it
             if (updateExisting)
             {
@@ -904,6 +917,9 @@ namespace DiscordBotPlugin
                     break;
                 case "manage-server":
                     await ManageServer(arg);
+                    break;
+                case "backup-server":
+                    BackupServer(arg);
                     break;
                 default:
                     // Invalid button ID, exit the method
@@ -1424,6 +1440,56 @@ namespace DiscordBotPlugin
 
             // Send a private message to the user with the link to the management panel
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
+        }
+
+        /// <summary>
+        /// Hook into LocalFileBackupPlugin events and request a backup
+        /// </summary>
+        /// <param name="socketMessageComponent">The SocketMessageComponent argument</param>
+        private void BackupServer(SocketMessageComponent socketMessageComponent)
+        {
+            currentComponent = socketMessageComponent;
+            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + socketMessageComponent.User.Username};
+
+            // Register event handlers
+            backupProvider.BackupActionComplete += OnBackupComplete;
+            backupProvider.BackupActionFailed += OnBackupFailed;
+            backupProvider.BackupActionStarting += OnBackupStarting;
+
+            // Initiate backup
+            log.Info("Backup requested by " + socketMessageComponent.User.Username + " - attempting to start");
+            backupProvider.TakeBackup(manifest);
+        }
+
+        // Define event handlers with SocketMessageComponent parameter
+        void OnBackupComplete(object sender, EventArgs e)
+        {
+            // Unregister events
+            UnregisterEvents();
+
+            // Handle completion logic
+            currentComponent.User.SendMessageAsync("Backup completed successfully.");
+        }
+
+        void OnBackupFailed(object sender, EventArgs e)
+        {
+            // Unregister events
+            UnregisterEvents();
+
+            // Handle failure logic
+            currentComponent.User.SendMessageAsync("Backup failed, check the AMP logs for information.");
+        }
+        private void UnregisterEvents()
+        {
+            backupProvider.BackupActionComplete -= OnBackupComplete;
+            backupProvider.BackupActionFailed -= OnBackupFailed;
+            backupProvider.BackupActionStarting -= OnBackupStarting;
+        }
+
+        void OnBackupStarting(object sender, EventArgs e)
+        {
+            // Handle starting logic
+            currentComponent.User.SendMessageAsync("Backup is starting.");
         }
 
         /// <summary>

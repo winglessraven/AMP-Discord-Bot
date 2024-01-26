@@ -84,6 +84,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Manage Button", "Toggle the manage button visibility on the info panel", false)]
             public bool ShowManageButton = false;
 
+            [WebSetting("Display Backup Button", "Toggle the backup button visibility on the info panel", false)]
+            public bool ShowBackupButton = false;
+
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false)]
             public bool ShowOnlinePlayers = false;
 
