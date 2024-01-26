@@ -30,7 +30,7 @@ namespace DiscordBotPlugin
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
-        private SocketMessageComponent currentComponent;
+        private SocketGuildUser currentUser;
 
         //game specific variables
         private string valheimJoinCode;
@@ -919,7 +919,7 @@ namespace DiscordBotPlugin
                     await ManageServer(arg);
                     break;
                 case "backup-server":
-                    BackupServer(arg);
+                    BackupServer((SocketGuildUser)arg.User);
                     break;
                 default:
                     // Invalid button ID, exit the method
@@ -1446,10 +1446,10 @@ namespace DiscordBotPlugin
         /// Hook into LocalFileBackupPlugin events and request a backup
         /// </summary>
         /// <param name="socketMessageComponent">The SocketMessageComponent argument</param>
-        private void BackupServer(SocketMessageComponent socketMessageComponent)
+        private void BackupServer(SocketGuildUser user)
         {
-            currentComponent = socketMessageComponent;
-            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + socketMessageComponent.User.Username};
+            currentUser = user;
+            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + user.Username};
 
             // Register event handlers
             backupProvider.BackupActionComplete += OnBackupComplete;
@@ -1457,7 +1457,7 @@ namespace DiscordBotPlugin
             backupProvider.BackupActionStarting += OnBackupStarting;
 
             // Initiate backup
-            log.Info("Backup requested by " + socketMessageComponent.User.Username + " - attempting to start");
+            log.Info("Backup requested by " + user.Username + " - attempting to start");
             backupProvider.TakeBackup(manifest);
         }
 
@@ -1468,7 +1468,7 @@ namespace DiscordBotPlugin
             UnregisterEvents();
 
             // Handle completion logic
-            currentComponent.User.SendMessageAsync("Backup completed successfully.");
+            currentUser.SendMessageAsync("Backup completed successfully.");
         }
 
         void OnBackupFailed(object sender, EventArgs e)
@@ -1477,7 +1477,7 @@ namespace DiscordBotPlugin
             UnregisterEvents();
 
             // Handle failure logic
-            currentComponent.User.SendMessageAsync("Backup failed, check the AMP logs for information.");
+            currentUser.SendMessageAsync("Backup failed, check the AMP logs for information.");
         }
         private void UnregisterEvents()
         {
@@ -1489,7 +1489,7 @@ namespace DiscordBotPlugin
         void OnBackupStarting(object sender, EventArgs e)
         {
             // Handle starting logic
-            currentComponent.User.SendMessageAsync("Backup is starting.");
+            currentUser.SendMessageAsync("Backup is starting.");
         }
 
         /// <summary>
@@ -1768,6 +1768,10 @@ namespace DiscordBotPlugin
                     .WithName("full-playtime-list")
                     .WithDescription("Full Playtime List")
                     .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+
+                commandList.Add(new SlashCommandBuilder()
+                    .WithName("take-backup")
+                    .WithDescription("Take a backup of the instance"));
             }
             else
             {
@@ -1824,7 +1828,11 @@ namespace DiscordBotPlugin
                     .WithName("full-playtime-list")
                     .WithDescription("Full Playtime List")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("take-backup")
+                    .WithDescription("Take a backup of the instance")
+                    .WithType(ApplicationCommandOptionType.SubCommand));
 
                 // Add the base command to the command list
                 commandList.Add(baseCommand);
@@ -1990,6 +1998,11 @@ namespace DiscordBotPlugin
                             // await command.User.SendMessageAsync(playTime);
                         }
                         break;
+                    case "take-backup":
+                        BackupServer((SocketGuildUser)command.User);
+                        await CommandResponse("Backup Server", command);
+                        await command.RespondAsync("Backup command sent to the panel", ephemeral: true);
+                        break;
                 }
             }
             else
@@ -2109,6 +2122,11 @@ namespace DiscordBotPlugin
 
                             // await command.User.SendMessageAsync(playTime);
                         }
+                        break;
+                    case "take-backup":
+                        BackupServer((SocketGuildUser)command.User);
+                        await CommandResponse("Backup Server", command);
+                        await command.RespondAsync("Backup command sent to the panel", ephemeral: true);
                         break;
                 }
             }
