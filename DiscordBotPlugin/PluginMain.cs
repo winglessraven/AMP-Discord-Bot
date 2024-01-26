@@ -396,7 +396,7 @@ namespace DiscordBotPlugin
             embed.AddField("CPU Usage", application.GetCPUUsage() + "%", true);
 
             //set mem usage field
-            embed.AddField("Memory Usage", application.GetRAMUsage().ToString("N0") + "MB", true);
+            embed.AddField("Memory Usage", GetMemoryUsage(), true);
 
             //if server is online, get the uptime info and set the field accordingly
             if (application.State == ApplicationState.Ready)
@@ -658,7 +658,7 @@ namespace DiscordBotPlugin
                 // Get the CPU usage and memory usage
                 var cpu = application.GetCPUUsage();
                 cpuUsage = cpu + "%";
-                memoryUsage = application.GetRAMUsage().ToString("N0") + "MB";
+                memoryUsage = GetMemoryUsage();
 
                 //get count of players online and maximum slots
                 IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
@@ -829,12 +829,12 @@ namespace DiscordBotPlugin
                     // Get the CPU usage and memory usage
                     var cpuUsage = application.GetCPUUsage();
                     var cpuUsageString = cpuUsage + "%";
-                    var memUsage = application.GetRAMUsage();
+                    var memUsage = GetMemoryUsage();
 
                     // Get the name of the instance
                     var instanceName = platform.PlatformName;
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + GetMemoryUsage() + ", Bot Connection Status: " + _client.ConnectionState);
 
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
@@ -2164,6 +2164,32 @@ namespace DiscordBotPlugin
             }
 
             return eventChannel;
+        }
+
+        private string GetMemoryUsage()
+        {
+            bool gb = false;
+            double totalAvailable = application.MaxRAMUsage;
+            if (totalAvailable == 0)
+                totalAvailable = platform.InstalledRAMMB;
+            double usage = application.GetRAMUsage();
+            if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
+                gb = true;
+            
+            if(gb)
+            {
+                usage = usage / 1024;
+                totalAvailable = totalAvailable / 1024;
+            }             
+
+            if(_settings.MainSettings.ShowMaximumRAM)
+            {
+                return (usage.ToString(gb ? "N2" : "N0") + "/" + totalAvailable.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
+            }
+            else
+            {
+                return (usage.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
+            }
         }
 
         public class ServerInfo
