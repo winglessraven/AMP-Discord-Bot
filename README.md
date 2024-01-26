@@ -71,7 +71,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 
 ### Configure Permissions and Add to your Discord Server
 * Click the `OAuth2` option on the left hand menu followed by `URL Generator`
-* Select `bot` and `applications.commands` followed by `Send Messages`,`Manage Messages`,`Embed Links`,`Read Message History`, and `Add Reactions`
+* Select `bot` and `applications.commands` followed by `Send Messages`,`Manage Messages`,`Embed Links`, and `Read Message History`
 * Copy the resulting URL and paste into a new browser tab
 * Log in if nedded and add the bot to your Discord server by selecting it in the list
 * If you plan to use pemissions for the server commands, create a new role on your Discord server to use later on.
