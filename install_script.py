@@ -5,20 +5,25 @@ import subprocess
 import json
 import logging
 from copy import copy
+from datetime import datetime
 
-script_location = os.path.dirname(os.path.abspath(__file__)) # todo use pathlib instead
+script_location = os.path.abspath(__file__) # todo use pathlib instead
 script_dir = os.path.dirname(script_location)
 script_name = os.path.basename(__file__)
 
-logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler(os.path.join(script_dir, f'{script_name}.log')), logging.StreamHandler()]
-)
-for handler in logging.root.handlers:
-    if isinstance(handler, logging.StreamHandler):
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
+log_format='%(asctime)s - %(levelname)s - %(message)s'
+file_handler = logging.FileHandler(os.path.join(script_dir, f'{script_name}.log'))
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter(log_format))
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(logging.Formatter(log_format))
+logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, stream_handler])
 logger = logging.getLogger(__name__)
-
+logger.debug(f'Logging started at {datetime.now()}')
+logger.debug('WARNING: This log might contain sensitive information, like license keys, instance names and paths.')
+logger.debug('Do not share this log unaltered!')
+logger.debug(f'Script location: {script_location}')
 
 def get_user_input(prompt, default=None):
     user_input = input(f"{prompt} (Default: {default}): ")
@@ -38,9 +43,10 @@ ads_instance_name = 'ADS01'
 amp_process_name = 'AMP.exe'
 
 def execute_os_command(command):
+    logger.debug(f'Executing command: {command}')
     process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    logger.info(process.stdout)
-    logger.info(process.stderr)
+    logger.debug(process.stdout)
+    logger.debug(process.stderr)
 
 def download_latest_dll(url, path):
     with urllib.request.urlopen(url) as response, open(path, 'wb') as out_file:
@@ -121,10 +127,12 @@ if __name__ == "__main__":
         execute_os_command(['ampinstmgr', 'stop', instance_name])
 
     # (Re)activate ADS instance
-    if not developer_license_key:
-        logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
+    if developer_license_key:
+        for instance_name, instance_folder in instance_dirs.items():
+            logger.info(f'Reactivating instance {instance_name}')
+            execute_os_command(['ampinstmgr', 'reactivate', instance_name, developer_license_key])
     else:
-        execute_os_command(['ampinstmgr', 'reactivate', ads_instance_name, developer_license_key])
+        logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
     execute_os_command(['taskkill', '/f', '/im', amp_process_name])
 
     # Copy plugin dll and update amp config
