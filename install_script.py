@@ -3,6 +3,7 @@ import urllib.request
 import subprocess
 import json
 import logging
+import os
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -41,7 +42,6 @@ plugin_dll_dir: Path = Path('Plugins') / plugin_name
 plugin_config_file_name: str = f'{plugin_name}.kvp'
 ampconfig_name: str = 'AMPConfig.conf'
 ads_instance_name: str = 'ADS01'
-amp_process_name: str = 'AMP.exe'
 
 def execute_os_command(command: str) -> None:
     logger.debug(f'Executing command: {command}')
@@ -129,7 +129,10 @@ if __name__ == "__main__":
             execute_os_command(['ampinstmgr', 'reactivate', instance_folder.name, developer_license_key])
     else:
         logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
-    execute_os_command(['taskkill', '/f', '/im', amp_process_name])
+    if os.name == 'nt':  # Windows
+        execute_os_command(['taskkill', '/f', '/im', 'AMP.exe'])
+    elif os.name == 'posix':  # Linux
+        execute_os_command(['pkill', '-f', 'amp'])
 
     # Copy plugin dll and update amp config
     for instance_folder in instance_dirs:
