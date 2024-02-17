@@ -42,6 +42,11 @@ Web Panel:
 *Note: If `Remove Bot Name` is enabled in settings then the commands will exclude the name.*
 
 # Configuration Steps
+
+## Install Script
+Thanks to [Bluscream](https://github.com/Bluscream) there is now a handy install script to take care of activating instances, downloading the plugin, and enabling it.
+The script can be found [here](https://github.com/winglessraven/AMP-Discord-Bot/blob/master/install_script.py).
+
 ## Configure AMP
 Before the plugin can be used you need to configure AMP in a specific way.  **NOTE: The plugin cannot be used on ADS. It can only run on non-ADS instances.**
 ### Activate with a Developer Licence
