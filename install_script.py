@@ -31,7 +31,11 @@ def get_user_input(prompt: str, default: Union[str, None] = None) -> str:
     user_input = input(f"{prompt} (Default: {default}): ")
     return user_input if user_input else default
 
-base_path: Path = Path('C:\\AMPDatastore\\Instances\\')
+if os.name == 'nt':  # Windows
+    base_path: Path = Path('C:\\AMPDatastore\\Instances\\')
+elif os.name == 'posix':  # Linux
+    base_path: Path = Path('/home/amp/.ampdata/instances/')
+    
 developer_license_key: str = ''
 
 github_api_url: str = 'https://api.github.com/repos/winglessraven/AMP-Discord-Bot/releases/latest'
@@ -95,6 +99,7 @@ if __name__ == "__main__":
     # Get user input
     base_path = Path(get_user_input("Set base path", base_path))
     developer_license_key = get_user_input("Set developer license key [Empty skips activation]", developer_license_key)
+    ads_instance_name = get_user_input("Set ADS name", ads_instance_name)
 
     # Download latest plugin dll
     with urllib.request.urlopen(github_api_url) as response:
@@ -161,3 +166,7 @@ if __name__ == "__main__":
     for instance_folder in instance_dirs:
         logger.info(f'Starting instance {instance_folder.name}')
         execute_os_command(['ampinstmgr', 'start', instance_folder.name])
+
+    # Start ADS again
+    logger.info(f'Starting ADS')
+    execute_os_command(['ampinstmgr', 'start', ads_instance_name])
