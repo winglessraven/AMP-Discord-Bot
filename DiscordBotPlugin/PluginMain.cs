@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using LocalFileBackupPlugin;
 
 namespace DiscordBotPlugin
 {
@@ -24,15 +25,18 @@ namespace DiscordBotPlugin
         private readonly IApplicationWrapper application;
         private readonly IAMPInstanceInfo aMPInstanceInfo;
         private readonly IConfigSerializer _config;
+        private readonly IFeatureManager features;
+        private readonly BackupProvider backupProvider;
         private DiscordSocketClient _client;
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
+        private SocketGuildUser currentUser;
 
         //game specific variables
         private string valheimJoinCode;
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
-            IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo)
+            IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo, IFeatureManager Features, BackupProvider BackupProvider)
         {
             _config = config;
             this.log = log;
@@ -41,6 +45,11 @@ namespace DiscordBotPlugin
             _tasks = taskManager;
             this.application = application;
             aMPInstanceInfo = AMPInstanceInfo;
+            features = Features;
+
+            features.PostLoadPlugin(application,"LocalFileBackupPlugin");
+            features.RegisterFeature(BackupProvider);
+            backupProvider = BackupProvider;
 
             config.SaveMethod = PluginSaveMethod.KVP;
             config.KVPSeparator = "=";
@@ -387,7 +396,7 @@ namespace DiscordBotPlugin
             embed.AddField("CPU Usage", application.GetCPUUsage() + "%", true);
 
             //set mem usage field
-            embed.AddField("Memory Usage", application.GetRAMUsage().ToString("N0") + "MB", true);
+            embed.AddField("Memory Usage", GetMemoryUsage(), true);
 
             //if server is online, get the uptime info and set the field accordingly
             if (application.State == ApplicationState.Ready)
@@ -519,6 +528,10 @@ namespace DiscordBotPlugin
             if (_settings.MainSettings.ShowManageButton)
                 builder.WithButton("Manage", "manage-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary);
 
+            //if backup button required, add it
+            if (_settings.MainSettings.ShowBackupButton)
+                builder.WithButton("Backup", "backup-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+
             //if the message already exists, try to update it
             if (updateExisting)
             {
@@ -645,7 +658,7 @@ namespace DiscordBotPlugin
                 // Get the CPU usage and memory usage
                 var cpu = application.GetCPUUsage();
                 cpuUsage = cpu + "%";
-                memoryUsage = application.GetRAMUsage().ToString("N0") + "MB";
+                memoryUsage = GetMemoryUsage();
 
                 //get count of players online and maximum slots
                 IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
@@ -816,12 +829,12 @@ namespace DiscordBotPlugin
                     // Get the CPU usage and memory usage
                     var cpuUsage = application.GetCPUUsage();
                     var cpuUsageString = cpuUsage + "%";
-                    var memUsage = application.GetRAMUsage();
+                    var memUsage = GetMemoryUsage();
 
                     // Get the name of the instance
                     var instanceName = platform.PlatformName;
 
-                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + application.GetPhysicalRAMUsage() + "MB, Bot Connection Status: " + _client.ConnectionState);
+                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + GetMemoryUsage() + ", Bot Connection Status: " + _client.ConnectionState);
 
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
@@ -904,6 +917,9 @@ namespace DiscordBotPlugin
                     break;
                 case "manage-server":
                     await ManageServer(arg);
+                    break;
+                case "backup-server":
+                    BackupServer((SocketGuildUser)arg.User);
                     break;
                 default:
                     // Invalid button ID, exit the method
@@ -1427,6 +1443,56 @@ namespace DiscordBotPlugin
         }
 
         /// <summary>
+        /// Hook into LocalFileBackupPlugin events and request a backup
+        /// </summary>
+        /// <param name="socketMessageComponent">The SocketMessageComponent argument</param>
+        private void BackupServer(SocketGuildUser user)
+        {
+            currentUser = user;
+            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + user.Username};
+
+            // Register event handlers
+            backupProvider.BackupActionComplete += OnBackupComplete;
+            backupProvider.BackupActionFailed += OnBackupFailed;
+            backupProvider.BackupActionStarting += OnBackupStarting;
+
+            // Initiate backup
+            log.Info("Backup requested by " + user.Username + " - attempting to start");
+            backupProvider.TakeBackup(manifest);
+        }
+
+        // Define event handlers with SocketMessageComponent parameter
+        void OnBackupComplete(object sender, EventArgs e)
+        {
+            // Unregister events
+            UnregisterEvents();
+
+            // Handle completion logic
+            currentUser.SendMessageAsync("Backup completed successfully.");
+        }
+
+        void OnBackupFailed(object sender, EventArgs e)
+        {
+            // Unregister events
+            UnregisterEvents();
+
+            // Handle failure logic
+            currentUser.SendMessageAsync("Backup failed, check the AMP logs for information.");
+        }
+        private void UnregisterEvents()
+        {
+            backupProvider.BackupActionComplete -= OnBackupComplete;
+            backupProvider.BackupActionFailed -= OnBackupFailed;
+            backupProvider.BackupActionStarting -= OnBackupStarting;
+        }
+
+        void OnBackupStarting(object sender, EventArgs e)
+        {
+            // Handle starting logic
+            currentUser.SendMessageAsync("Backup is starting.");
+        }
+
+        /// <summary>
         /// Gets the string representation of the application state, with the option to use a replacement value if available.
         /// </summary>
         /// <returns>The string representation of the application state.</returns>
@@ -1702,6 +1768,10 @@ namespace DiscordBotPlugin
                     .WithName("full-playtime-list")
                     .WithDescription("Full Playtime List")
                     .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+
+                commandList.Add(new SlashCommandBuilder()
+                    .WithName("take-backup")
+                    .WithDescription("Take a backup of the instance"));
             }
             else
             {
@@ -1758,7 +1828,11 @@ namespace DiscordBotPlugin
                     .WithName("full-playtime-list")
                     .WithDescription("Full Playtime List")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("take-backup")
+                    .WithDescription("Take a backup of the instance")
+                    .WithType(ApplicationCommandOptionType.SubCommand));
 
                 // Add the base command to the command list
                 commandList.Add(baseCommand);
@@ -1924,6 +1998,11 @@ namespace DiscordBotPlugin
                             // await command.User.SendMessageAsync(playTime);
                         }
                         break;
+                    case "take-backup":
+                        BackupServer((SocketGuildUser)command.User);
+                        await CommandResponse("Backup Server", command);
+                        await command.RespondAsync("Backup command sent to the panel", ephemeral: true);
+                        break;
                 }
             }
             else
@@ -2044,6 +2123,11 @@ namespace DiscordBotPlugin
                             // await command.User.SendMessageAsync(playTime);
                         }
                         break;
+                    case "take-backup":
+                        BackupServer((SocketGuildUser)command.User);
+                        await CommandResponse("Backup Server", command);
+                        await command.RespondAsync("Backup command sent to the panel", ephemeral: true);
+                        break;
                 }
             }
         }
@@ -2080,6 +2164,32 @@ namespace DiscordBotPlugin
             }
 
             return eventChannel;
+        }
+
+        private string GetMemoryUsage()
+        {
+            bool gb = false;
+            double totalAvailable = application.MaxRAMUsage;
+            if (totalAvailable == 0)
+                totalAvailable = platform.InstalledRAMMB;
+            double usage = application.GetRAMUsage();
+            if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
+                gb = true;
+            
+            if(gb)
+            {
+                usage = usage / 1024;
+                totalAvailable = totalAvailable / 1024;
+            }             
+
+            if(_settings.MainSettings.ShowMaximumRAM)
+            {
+                return (usage.ToString(gb ? "N2" : "N0") + "/" + totalAvailable.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
+            }
+            else
+            {
+                return (usage.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
+            }
         }
 
         public class ServerInfo

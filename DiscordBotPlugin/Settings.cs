@@ -84,6 +84,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Manage Button", "Toggle the manage button visibility on the info panel", false)]
             public bool ShowManageButton = false;
 
+            [WebSetting("Display Backup Button", "Toggle the backup button visibility on the info panel", false)]
+            public bool ShowBackupButton = false;
+
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false)]
             public bool ShowOnlinePlayers = false;
 
@@ -127,6 +130,9 @@ namespace DiscordBotPlugin
 
             [WebSetting("Enable Web Panel", "Enable a web panel on the specified port for embedding onto a website. Info on further configuration [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Configure-the-Web-Panel)", false)]
             public bool EnableWebPanel = false;
+
+            [WebSetting("Show Maximum RAM", "Show maximum RAM on the info panel", false)]
+            public bool ShowMaximumRAM = false;
 
             public Dictionary<string, DateTime> LastSeen = new Dictionary<string, DateTime>();
 
