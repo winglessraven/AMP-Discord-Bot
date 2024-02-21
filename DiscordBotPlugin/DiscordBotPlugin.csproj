@@ -1,0 +1,180 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\ILMerge.3.0.41\build\ILMerge.props" Condition="Exists('..\packages\ILMerge.3.0.41\build\ILMerge.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{403140C1-55EF-4A4D-85A3-76115564B1D7}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DiscordBotPlugin</RootNamespace>
+    <AssemblyName>DiscordBotPlugin</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI_Build|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\CI_Build\</OutputPath>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Nightly|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Nightly\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Discord.Net.Commands, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.Commands.3.12.0\lib\net461\Discord.Net.Commands.dll</HintPath>
+    </Reference>
+    <Reference Include="Discord.Net.Core, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.Core.3.12.0\lib\net461\Discord.Net.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Discord.Net.Interactions, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.Interactions.3.12.0\lib\net461\Discord.Net.Interactions.dll</HintPath>
+    </Reference>
+    <Reference Include="Discord.Net.Rest, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.Rest.3.12.0\lib\net461\Discord.Net.Rest.dll</HintPath>
+    </Reference>
+    <Reference Include="Discord.Net.Webhook, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.Webhook.3.12.0\lib\netstandard2.0\Discord.Net.Webhook.dll</HintPath>
+    </Reference>
+    <Reference Include="Discord.Net.WebSocket, Version=3.12.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Discord.Net.WebSocket.3.12.0\lib\net461\Discord.Net.WebSocket.dll</HintPath>
+    </Reference>
+    <Reference Include="LocalFileBackupPlugin">
+      <HintPath>H:\AMPDatastore\Instances\Minecraft01\Plugins\LocalFileBackupPlugin\LocalFileBackupPlugin.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=7.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.7.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=7.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.7.0.0\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="ModuleShared">
+      <HintPath>H:\AMPDatastore\Instances\Minecraft01\ModuleShared.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Collections.Immutable, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Collections.Immutable.7.0.0\lib\net462\System.Collections.Immutable.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core" />
+    <Reference Include="System.Interactive.Async, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Interactive.Async.6.0.1\lib\net48\System.Interactive.Async.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Linq.Async, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Linq.Async.6.0.1\lib\net48\System.Linq.Async.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Reactive, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Reactive.6.0.0\lib\net472\System.Reactive.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PluginMain.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResourceReader.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="WebMethods.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="DEVELOPER_README.txt" />
+    <EmbeddedResource Include="styles.css" />
+    <EmbeddedResource Include="script.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="ILMergeConfig.json" />
+    <None Include="packages.config" />
+    <EmbeddedResource Include="panel.html" />
+    <None Include="panel.json" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>xcopy "$(TargetDir)ILMerge\DiscordBotPlugin.dll" "H:\AMPDatastore\Instances\Minecraft01\Plugins\DiscordBotPlugin\" /Y</PostBuildEvent>
+  </PropertyGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\ILMerge.3.0.41\build\ILMerge.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\ILMerge.3.0.41\build\ILMerge.props'))" />
+    <Error Condition="!Exists('..\packages\ILMerge.MSBuild.Task.1.0.7\build\ILMerge.MSBuild.Task.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\ILMerge.MSBuild.Task.1.0.7\build\ILMerge.MSBuild.Task.targets'))" />
+  </Target>
+  <Import Project="..\packages\ILMerge.MSBuild.Task.1.0.7\build\ILMerge.MSBuild.Task.targets" Condition="Exists('..\packages\ILMerge.MSBuild.Task.1.0.7\build\ILMerge.MSBuild.Task.targets')" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
