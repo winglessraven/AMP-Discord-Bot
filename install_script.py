@@ -127,27 +127,11 @@ if __name__ == "__main__":
         logger.info(f'Stopping instance {instance_folder.name}')
         execute_os_command(['ampinstmgr', 'stop', instance_folder.name])
 
-    # (Re)activate ADS instance
-    if developer_license_key:
-        for instance_folder in instance_dirs:
-            logger.info(f'Reactivating instance {instance_folder.name}')
-            execute_os_command(['ampinstmgr', 'reactivate', instance_folder.name, developer_license_key])
-    else:
-        logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
-    if os.name == 'nt':  # Windows
-        execute_os_command(['taskkill', '/f', '/im', 'AMP.exe'])
-    elif os.name == 'posix':  # Linux
-        execute_os_command(['pkill', '-f', 'amp'])
-
-    # Copy plugin dll and update amp config
-    for instance_folder in instance_dirs:
-        logger.info(f'Processing instance {instance_folder.name}')
+        # Copy plugin dll and update amp config
         copy_dll_to_plugin_folder(instance_folder)
         update_amp_config(instance_folder)
-
-    # Copy plugin config file to other instances
-    for instance_folder in instance_dirs:
         plugin_config_file = instance_folder / plugin_config_file_name
+        
         if plugin_config_file.is_file():
             print(f'{plugin_config_file_name} exists in instance {instance_folder.name}')
             choice = get_user_input('Do you want to copy it to all other selected instances? (does not overwrite)', 'n')
@@ -162,11 +146,24 @@ if __name__ == "__main__":
                             plugin_config_file.copy2(other_plugin_config_file) # shutil.copy2(plugin_config_file, other_plugin_config_file)
             break
 
+    # (Re)activate ADS instance
+    if developer_license_key:
+        #stop ADS
+        logger.info(f'Stopping {ads_instance_name}')
+        execute_os_command(['ampinstmgr', 'stop', ads_instance_name])
+        
+        for instance_folder in instance_dirs:
+            logger.info(f'Reactivating instance {instance_folder.name}')
+            execute_os_command(['ampinstmgr', 'reactivate', instance_folder.name, developer_license_key])
+
+        #start ADS
+        logger.info(f'Starting {ads_instance_name}')
+        execute_os_command(['ampinstmgr', 'start', ads_instance_name])
+    else:
+        logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
+        
+
     # Start selected instances
     for instance_folder in instance_dirs:
         logger.info(f'Starting instance {instance_folder.name}')
         execute_os_command(['ampinstmgr', 'start', instance_folder.name])
-
-    # Start ADS again
-    logger.info(f'Starting ADS')
-    execute_os_command(['ampinstmgr', 'start', ads_instance_name])
