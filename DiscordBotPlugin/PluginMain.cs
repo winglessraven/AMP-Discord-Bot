@@ -13,6 +13,8 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using LocalFileBackupPlugin;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 
 namespace DiscordBotPlugin
 {
@@ -1131,6 +1133,12 @@ namespace DiscordBotPlugin
 
                 log.Debug($"Guild: {guild} || Channel: {channelID}");
 
+                if (!await CanBotSendMessageInChannel(_client, channelID))
+                {
+                    log.Error("No permission to post to channel: " + logChannel);
+                    return;
+                }
+
                 await _client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             }
 
@@ -1306,7 +1314,13 @@ namespace DiscordBotPlugin
                 var eventChannel = GetEventChannel(guildID, _settings.MainSettings.PostPlayerEventsChannel);
 
                 if (eventChannel == null)
-                    break; // Event channel doesn't exist, stop processing
+                    break; // Event channel doesn't exist, stop processing             
+
+                if (!await CanBotSendMessageInChannel(_client, eventChannel.Id))
+                {
+                    log.Error("No permission to post to channel: " + eventChannel.Name);
+                    return;
+                }
 
                 string userName = args.User.Name;
 
@@ -1385,6 +1399,12 @@ namespace DiscordBotPlugin
                 if (eventChannel == null)
                     return; // Event channel doesn't exist, stop processing
 
+                if (!await CanBotSendMessageInChannel(_client, eventChannel.Id))
+                {
+                    log.Error("No permission to post to channel: " + eventChannel.Name);
+                    return;
+                }
+
                 string userName = args.User.Name;
 
                 // Build the embed message for the event
@@ -1417,6 +1437,27 @@ namespace DiscordBotPlugin
                 embed.WithCurrentTimestamp();
                 await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
             }
+        }
+
+        public async Task<bool> CanBotSendMessageInChannel(DiscordSocketClient client, ulong channelId)
+        {
+            // Get the channel object from the channel ID
+            var channel = client.GetChannel(channelId) as SocketTextChannel;
+
+            if (channel == null)
+            {
+                Console.WriteLine("Channel not found or is not a text channel.");
+                return false;
+            }
+
+            // Get the current user (the bot) as a user object within the context of the guild
+            var botUser = channel.Guild.GetUser(client.CurrentUser.Id);
+
+            // Get the bot's permissions in the channel
+            var permissions = botUser.GetPermissions(channel);
+
+            // Check if the bot has SendMessage permission in the channel
+            return permissions.Has(ChannelPermission.SendMessages);
         }
 
         /// <summary>
