@@ -116,10 +116,13 @@ if __name__ == "__main__":
 
     # Select instances to process
     for instance_folder in list(instance_dirs):
-        choice = get_user_input(f'Process instance {instance_folder.name}?', 'y')
-        if choice.lower() != 'y':
-            logger.info(f'Skipping instance {instance_folder.name}')
+        if instance_folder.name == ads_instance_name:
             instance_dirs.remove(instance_folder)
+        else:
+            choice = get_user_input(f'Process instance {instance_folder.name}?', 'y')
+            if choice.lower() != 'y':
+                logger.info(f'Skipping instance {instance_folder.name}')
+                instance_dirs.remove(instance_folder)
     logger.info(f'Selected instances: {[path.name for path in instance_dirs]}')
 
     # Stop selected instances
