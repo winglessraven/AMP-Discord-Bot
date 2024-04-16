@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using LocalFileBackupPlugin;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Threading.Tasks.Sources;
 
 namespace DiscordBotPlugin
 {
@@ -403,7 +404,8 @@ namespace DiscordBotPlugin
             //if server is online, get the uptime info and set the field accordingly
             if (application.State == ApplicationState.Ready)
             {
-                TimeSpan uptime = DateTime.Now.Subtract(application.StartTime);
+
+                TimeSpan uptime = DateTime.Now.Subtract(application.StartTime.ToLocalTime());
                 embed.AddField("Uptime", string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds), true);
             }
 
@@ -695,7 +697,7 @@ namespace DiscordBotPlugin
                 //if server is online, get the uptime info and set the field accordingly
                 if (application.State == ApplicationState.Ready)
                 {
-                    TimeSpan up = DateTime.Now.Subtract(application.StartTime);
+                    TimeSpan up = DateTime.Now.Subtract(application.StartTime.ToLocalTime());
                     uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", up.Days, up.Hours, up.Minutes, up.Seconds);
                 }
                 else
@@ -2213,7 +2215,8 @@ namespace DiscordBotPlugin
             double totalAvailable = application.MaxRAMUsage;
             if (totalAvailable == 0)
                 totalAvailable = platform.InstalledRAMMB;
-            double usage = application.GetRAMUsage();
+            double usage = application.GetPhysicalRAMUsage();
+
             if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
                 gb = true;
             
