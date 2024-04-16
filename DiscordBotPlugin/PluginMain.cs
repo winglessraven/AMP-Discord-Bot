@@ -2217,8 +2217,6 @@ namespace DiscordBotPlugin
                 totalAvailable = platform.InstalledRAMMB;
             double usage = application.GetPhysicalRAMUsage();
 
-            if()
-
             if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
                 gb = true;
             
