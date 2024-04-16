@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using LocalFileBackupPlugin;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Threading.Tasks.Sources;
 
 namespace DiscordBotPlugin
 {
@@ -2214,7 +2215,10 @@ namespace DiscordBotPlugin
             double totalAvailable = application.MaxRAMUsage;
             if (totalAvailable == 0)
                 totalAvailable = platform.InstalledRAMMB;
-            double usage = application.GetRAMUsage();
+            double usage = application.GetPhysicalRAMUsage();
+
+            if()
+
             if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
                 gb = true;
             
