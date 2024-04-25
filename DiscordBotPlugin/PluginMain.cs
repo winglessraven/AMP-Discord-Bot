@@ -13,9 +13,6 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using LocalFileBackupPlugin;
-using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Threading.Tasks.Sources;
 
 namespace DiscordBotPlugin
 {
@@ -34,6 +31,7 @@ namespace DiscordBotPlugin
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
         private SocketGuildUser currentUser;
+        private UserStatus userStatus;
 
         //game specific variables
         private string valheimJoinCode;
@@ -59,6 +57,8 @@ namespace DiscordBotPlugin
 
             _settings.SettingModified += Settings_SettingModified;
             log.MessageLogged += Log_MessageLogged;
+
+            application.StateChanged += UpdatePresence;
 
             if (application is IHasSimpleUserList hasSimpleUserList)
             {
@@ -788,18 +788,18 @@ namespace DiscordBotPlugin
             await _client.GetGuild(guildId.Value)?.GetTextChannel(channelId)?.SendMessageAsync(embed: embed.Build());
         }
 
-        /// <summary>
-        /// Looping task to update bot status/presence
-        /// </summary>
-        /// <returns></returns>
-        public async Task SetStatus()
+        public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args)
         {
-            // While the bot is active, update its status
-            while (_settings.MainSettings.BotActive)
+            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState))
             {
                 try
                 {
                     UserStatus status;
+
+                    // Get the current user and max user count
+                    IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
+                    var onlinePlayers = hasSimpleUserList.Users.Count;
+                    var maximumPlayers = hasSimpleUserList.MaxUsers;
 
                     // If the server is stopped or in a failed state, set the presence to DoNotDisturb
                     if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
@@ -825,6 +825,45 @@ namespace DiscordBotPlugin
                             ClearAllPlayTimes();
                     }
 
+                    if(status != userStatus)
+                    {
+                        await _client.SetStatusAsync(status);
+                        userStatus = status;
+                    }
+
+                    // Set the presence/activity based on the server state
+                    if (application.State == ApplicationState.Ready)
+                    {
+                        //await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.CustomStatus);
+                        await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
+                    }
+                    else
+                    {
+                        //await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
+                        await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
+                    }
+                }
+                catch (System.Net.WebException exception)
+                {
+                    await _client.SetGameAsync("Server Offline", null, ActivityType.Watching);
+                    await _client.SetStatusAsync(UserStatus.DoNotDisturb);
+                    log.Error("Exception: " + exception.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Looping task to update bot status/presence
+        /// </summary>
+        /// <returns></returns>
+        public async Task SetStatus()
+        {
+            // While the bot is active, update its status
+            while (_settings.MainSettings.BotActive)
+            {
+                try
+                {
+
                     // Get the current user and max user count
                     IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
                     var onlinePlayers = hasSimpleUserList.Users.Count;
@@ -840,20 +879,6 @@ namespace DiscordBotPlugin
 
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + GetMemoryUsage() + ", Bot Connection Status: " + _client.ConnectionState);
 
-                    // Set the presence/activity based on the server state
-                    if (application.State == ApplicationState.Ready)
-                    {
-                        //await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.CustomStatus);
-                        await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
-                    }
-                    else
-                    {
-                        //await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
-                        await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
-                    }
-
-                    await _client.SetStatusAsync(status);
-
                     // Update the embed if it exists
                     if (_settings.MainSettings.InfoMessageDetails != null && _settings.MainSettings.InfoMessageDetails.Count > 0)
                     {
@@ -864,7 +889,7 @@ namespace DiscordBotPlugin
                 {
                     await _client.SetGameAsync("Server Offline", null, ActivityType.Watching);
                     await _client.SetStatusAsync(UserStatus.DoNotDisturb);
-                    log.Info("Exception: " + exception.Message);
+                    log.Error("Exception: " + exception.Message);
                 }
 
                 // Loop the task according to the bot refresh interval setting
@@ -1306,6 +1331,9 @@ namespace DiscordBotPlugin
                 _config.Save(_settings);
             }
 
+            //Update the bot presence
+            UpdatePresence(null, null);
+
             // Check if posting player events is disabled
             if (!_settings.MainSettings.PostPlayerEvents)
                 return;
@@ -1358,6 +1386,12 @@ namespace DiscordBotPlugin
             }
         }
 
+        async Task ExecuteWithDelay(int delay, Action action)
+        {
+            await Task.Delay(delay);
+            action();
+        }
+
         /// <summary>
         /// Event handler for when a user leaves the server.
         /// </summary>
@@ -1384,6 +1418,12 @@ namespace DiscordBotPlugin
 
                 // Remove the player from the 'live' list
                 playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
+
+                log.Info("Player leave");
+
+                //Update the bot presence, need to wait for AMP to process the leave first, delay by 2 seconds
+                await ExecuteWithDelay(2000, () => UpdatePresence(null, null));
+
             }
             catch (Exception exception)
             {
