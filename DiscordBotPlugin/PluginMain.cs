@@ -58,7 +58,7 @@ namespace DiscordBotPlugin
             _settings.SettingModified += Settings_SettingModified;
             log.MessageLogged += Log_MessageLogged;
 
-            application.StateChanged += UpdatePresence;
+            application.StateChanged += ApplicationStateChange;
 
             if (application is IHasSimpleUserList hasSimpleUserList)
             {
@@ -184,6 +184,7 @@ namespace DiscordBotPlugin
                     try
                     {
                         _ = ConnectDiscordAsync(_settings.MainSettings.BotToken);
+                        UpdatePresence(null, null, true);
                     }
                     catch (Exception exception)
                     {
@@ -788,9 +789,14 @@ namespace DiscordBotPlugin
             await _client.GetGuild(guildId.Value)?.GetTextChannel(channelId)?.SendMessageAsync(embed: embed.Build());
         }
 
-        public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args)
+        public void ApplicationStateChange(object sender, ApplicationStateChangeEventArgs args)
         {
-            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState))
+            UpdatePresence(sender, args);
+        }
+
+        public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args, bool force = false)
+        {
+            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force))
             {
                 try
                 {
