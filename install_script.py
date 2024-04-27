@@ -132,22 +132,7 @@ if __name__ == "__main__":
 
         # Copy plugin dll and update amp config
         copy_dll_to_plugin_folder(instance_folder)
-        update_amp_config(instance_folder)
-        plugin_config_file = instance_folder / plugin_config_file_name
-        
-        if plugin_config_file.is_file():
-            print(f'{plugin_config_file_name} exists in instance {instance_folder.name}')
-            choice = get_user_input('Do you want to copy it to all other selected instances? (does not overwrite)', 'n')
-            if choice.lower() == 'y':
-                for other_instance_folder in list(instance_dirs):
-                    if other_instance_folder.name != instance_folder.name:
-                        other_plugin_config_file = other_instance_folder / plugin_config_file_name
-                        if other_plugin_config_file.is_file():
-                            logger.info(f'{other_plugin_config_file} already exists, skipping')
-                        else:
-                            logger.info(f'Copying {plugin_config_file} to {other_plugin_config_file}')
-                            plugin_config_file.copy2(other_plugin_config_file) # shutil.copy2(plugin_config_file, other_plugin_config_file)
-            break
+        update_amp_config(instance_folder)            
 
     # (Re)activate ADS instance
     if developer_license_key:
