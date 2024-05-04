@@ -31,7 +31,6 @@ namespace DiscordBotPlugin
         private List<PlayerPlayTime> playerPlayTimes = new List<PlayerPlayTime>();
         private List<String> consoleOutput = new List<String>();
         private SocketGuildUser currentUser;
-        private UserStatus userStatus;
 
         //game specific variables
         private string valheimJoinCode;
@@ -796,10 +795,21 @@ namespace DiscordBotPlugin
 
         public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args, bool force = false)
         {
-            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force))
+            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force) && _client.ConnectionState == ConnectionState.Connected)
             {
                 try
                 {
+
+                    string currentActivity = _client.Activity?.Name ?? "";
+                    if(currentActivity != "")
+                    {
+                        var customStatus = _client.Activity as CustomStatusGame;
+                        if(customStatus != null)
+                        {
+                            currentActivity = customStatus.State;
+                        }
+                    }
+                    UserStatus currentStatus = _client.Status;
                     UserStatus status;
 
                     // Get the current user and max user count
@@ -831,22 +841,27 @@ namespace DiscordBotPlugin
                             ClearAllPlayTimes();
                     }
 
-                    if(status != userStatus)
+                    if(status != currentStatus)
                     {
                         await _client.SetStatusAsync(status);
-                        userStatus = status;
                     }
+
+                    string presenceString = OnlineBotPresenceString(onlinePlayers, maximumPlayers);
 
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
                     {
-                        //await _client.SetGameAsync(OnlineBotPresenceString(onlinePlayers, maximumPlayers), null, ActivityType.CustomStatus);
-                        await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
+                        if(currentActivity != presenceString)
+                        {
+                            await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
+                        }
                     }
                     else
                     {
-                        //await _client.SetGameAsync(application.State.ToString(), null, ActivityType.Playing);
-                        await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
+                        if(presenceString != application.State.ToString())
+                        {
+                            await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
+                        }
                     }
                 }
                 catch (System.Net.WebException exception)
@@ -890,6 +905,9 @@ namespace DiscordBotPlugin
                     {
                         _ = GetServerInfo(true, null, false);
                     }
+
+                    //change presence if required
+                    UpdatePresence(null, null, true);
                 }
                 catch (System.Net.WebException exception)
                 {
