@@ -1,18 +1,18 @@
-﻿using ModuleShared;
+﻿using Discord;
+using Discord.Commands;
+using Discord.Net;
+using Discord.WebSocket;
+using LocalFileBackupPlugin;
+using ModuleShared;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Threading.Tasks;
-using Discord;
-using Discord.WebSocket;
-using Discord.Commands;
-using System.Linq;
-using Discord.Net;
-using System.Text.RegularExpressions;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text;
-using Newtonsoft.Json;
-using LocalFileBackupPlugin;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace DiscordBotPlugin
 {
@@ -47,7 +47,7 @@ namespace DiscordBotPlugin
             aMPInstanceInfo = AMPInstanceInfo;
             features = Features;
 
-            features.PostLoadPlugin(application,"LocalFileBackupPlugin");
+            features.PostLoadPlugin(application, "LocalFileBackupPlugin");
             features.RegisterFeature(BackupProvider);
             backupProvider = BackupProvider;
 
@@ -218,8 +218,6 @@ namespace DiscordBotPlugin
 
             if (_settings.MainSettings.DiscordDebugMode)
                 config.LogLevel = LogSeverity.Debug;
-
-            //config.GatewayHost = "wss://gateway.discord.gg";
 
             // Initialize Discord client with the specified configuration
             _client = new DiscordSocketClient(config);
@@ -638,13 +636,13 @@ namespace DiscordBotPlugin
                 // Write content to the files
                 ResourceReader reader = new ResourceReader();
 
-                if(!File.Exists(scriptFilePath))
+                if (!File.Exists(scriptFilePath))
                     File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
 
-                if(!File.Exists(stylesFilePath))
+                if (!File.Exists(stylesFilePath))
                     File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
 
-                if(!File.Exists(panelFilePath))
+                if (!File.Exists(panelFilePath))
                     File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
 
                 //variables
@@ -702,7 +700,7 @@ namespace DiscordBotPlugin
                 }
                 else
                 {
-                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0,0,0,0);
+                    uptime = string.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", 0, 0, 0, 0);
                 }
                 if (onlinePlayerCount > 0 && _settings.MainSettings.ShowOnlinePlayers)
                 {
@@ -725,7 +723,7 @@ namespace DiscordBotPlugin
                 if (_settings.MainSettings.ShowPlaytimeLeaderboard)
                 {
                     string leaderboard = GetPlayTimeLeaderBoard(5, false, null, false, true);
-                    playtimeLeaderBoard = leaderboard.Split(new[] {"\r\n","\n"}, StringSplitOptions.RemoveEmptyEntries);
+                    playtimeLeaderBoard = leaderboard.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 }
 
 
@@ -795,16 +793,16 @@ namespace DiscordBotPlugin
 
         public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args, bool force = false)
         {
-            if(_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force) && _client.ConnectionState == ConnectionState.Connected)
+            if (_settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force) && _client.ConnectionState == ConnectionState.Connected)
             {
                 try
                 {
 
                     string currentActivity = _client.Activity?.Name ?? "";
-                    if(currentActivity != "")
+                    if (currentActivity != "")
                     {
                         var customStatus = _client.Activity as CustomStatusGame;
-                        if(customStatus != null)
+                        if (customStatus != null)
                         {
                             currentActivity = customStatus.State;
                         }
@@ -841,7 +839,7 @@ namespace DiscordBotPlugin
                             ClearAllPlayTimes();
                     }
 
-                    if(status != currentStatus)
+                    if (status != currentStatus)
                     {
                         await _client.SetStatusAsync(status);
                     }
@@ -851,14 +849,14 @@ namespace DiscordBotPlugin
                     // Set the presence/activity based on the server state
                     if (application.State == ApplicationState.Ready)
                     {
-                        if(currentActivity != presenceString)
+                        if (currentActivity != presenceString)
                         {
                             await _client.SetActivityAsync(new CustomStatusGame(OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
                         }
                     }
                     else
                     {
-                        if(presenceString != application.State.ToString())
+                        if (presenceString != application.State.ToString())
                         {
                             await _client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
                         }
@@ -1556,7 +1554,7 @@ namespace DiscordBotPlugin
         private void BackupServer(SocketGuildUser user)
         {
             currentUser = user;
-            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + user.Username};
+            BackupManifest manifest = new BackupManifest { ModuleName = aMPInstanceInfo.ModuleName, TakenBy = "DiscordBot", CreatedAutomatically = true, Name = "Backup Triggered by Discord Bot", Description = "Requested by " + user.Username };
 
             // Register event handlers
             backupProvider.BackupActionComplete += OnBackupComplete;
@@ -2281,16 +2279,16 @@ namespace DiscordBotPlugin
                 totalAvailable = platform.InstalledRAMMB;
             double usage = application.GetPhysicalRAMUsage();
 
-            if(usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
+            if (usage >= 1024 || (totalAvailable > 1024 && _settings.MainSettings.ShowMaximumRAM))
                 gb = true;
-            
-            if(gb)
+
+            if (gb)
             {
                 usage = usage / 1024;
                 totalAvailable = totalAvailable / 1024;
-            }             
+            }
 
-            if(_settings.MainSettings.ShowMaximumRAM)
+            if (_settings.MainSettings.ShowMaximumRAM)
             {
                 return (usage.ToString(gb ? "N2" : "N0") + "/" + totalAvailable.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
             }
