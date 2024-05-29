@@ -9,8 +9,8 @@ namespace DiscordBotPlugin
 {
     public class Settings : SettingStore
     {
-        [Description("Discord Bot")]
-        [SettingsGroupName("Discord Bot:smart_toy")]
+        [Description("Discord Bot:smart_toy")]
+        [SettingsGroupName("Discord Bot")]
         [Serializable]
         public class DiscordBotSettings : SettingSectionStore
         {
@@ -95,11 +95,11 @@ namespace DiscordBotPlugin
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowOnlinePlayers = false;
 
-            [WebSetting("Change Displayed Status", "Replace the default AMP status with your own - key is the AMP value, value is the replacement - possible values listed on the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)", false, Subcategory: "Misc:more_vert:7")]
-            public Dictionary<string, string> ChangeStatus = new Dictionary<string, string>();
-
             [WebSetting("Online Server Bot Presence Text", "Change the presence text when application is running, use {OnlinePlayers} and {MaximumPlayers} as variables", false, Subcategory: "Misc:more_vert:7")]
             public string OnlineBotPresence = "";
+
+            [WebSetting("Change Displayed Status", "Replace the default AMP status with your own - key is the AMP value, value is the replacement - possible values listed on the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)", false, Subcategory: "Misc:more_vert:7")]
+            public Dictionary<string, string> ChangeStatus = new Dictionary<string, string>();
 
             public Dictionary<string, TimeSpan> PlayTime = new Dictionary<string, TimeSpan>();
 
@@ -145,8 +145,8 @@ namespace DiscordBotPlugin
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();
         
-        [Description("Discord Bot")]
-        [SettingsGroupName("Discord Bot:smart_toy")]
+        [Description("Discord Bot:smart_toy")]
+        [SettingsGroupName("Discord Bot")]
         [Serializable]
         public class DiscordBotColoursSettings : SettingSectionStore
         {
@@ -186,8 +186,8 @@ namespace DiscordBotPlugin
 
         public DiscordBotColoursSettings ColourSettings = new DiscordBotColoursSettings();
 
-        [Description("Discord Bot")]
-        [SettingsGroupName("Discord Bot:smart_toy")]
+        [Description("Discord Bot:smart_toy")]
+        [SettingsGroupName("Discord Bot")]
         [Serializable]
         public class DiscordBotGameSpecificSettings : SettingSectionStore
         {
@@ -196,5 +196,22 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotGameSpecificSettings GameSpecificSettings = new DiscordBotGameSpecificSettings();
+
+        [Description("Discord Bot:smart_toy")]
+        [SettingsGroupName("Discord Bot")]
+        [Serializable]
+        public class DiscordBotAboutSettings : SettingSectionStore
+        {
+            [WebSetting("Support", "For support, or to submit issues and feature requests visit the [GitHub](https://github.com/winglessraven/AMP-Discord-Bot) page.", false, Subcategory: "About:info:8")]
+            public int? AboutMessage = null;
+
+            [WebSetting("Donations", "If you appreciate my work, donations are gratefully received! Visit my [Sponsor](https://github.com/sponsors/winglessraven) page.", false, Subcategory: "About:info:8")]                
+            public int? DonationsMessage = null;
+
+            [WebSetting("AMP Discord Bot", "Created by winglessraven", false, Subcategory: "About:info:8")]
+            public int? AMPDiscordBot = null;
+        }
+
+        public DiscordBotAboutSettings AboutSettings = new DiscordBotAboutSettings();
     }
 }
