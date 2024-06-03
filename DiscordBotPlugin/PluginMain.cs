@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
 
 namespace DiscordBotPlugin
 {
@@ -935,7 +936,9 @@ namespace DiscordBotPlugin
             if (arg.User is SocketGuildUser user)
             {
                 _client.PurgeUserCache(); // Try to clear cache so we can get the latest roles
-                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+
+                string[] roles = _settings.MainSettings.DiscordRole.Split(',');
+                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
             }
 
             if (!hasServerPermission)
@@ -2010,7 +2013,8 @@ namespace DiscordBotPlugin
                 if (command.User is SocketGuildUser user)
                 {
                     // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+                    string[] roles = _settings.MainSettings.DiscordRole.Split(',');
+                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
                 }
 
                 if (!hasServerPermission)
@@ -2136,7 +2140,8 @@ namespace DiscordBotPlugin
                 if (command.User is SocketGuildUser user)
                 {
                     // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => r.Name == _settings.MainSettings.DiscordRole);
+                    string[] roles = _settings.MainSettings.DiscordRole.Split(',');
+                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
                 }
 
                 if (!hasServerPermission)

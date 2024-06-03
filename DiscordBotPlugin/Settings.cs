@@ -48,7 +48,7 @@ namespace DiscordBotPlugin
             [WebSetting("Restrict Functions to Discord Role", "Restrict server functions (start/stop/restart/kill/update/console/manage) to Discord role", false, Subcategory: "Discord Config:settings:1")]
             public bool RestrictFunctions = false;
 
-            [WebSetting("Discord Role Name", "Name of the role in your Discord server that should be allowed to excecute server functions", false, Subcategory: "Discord Config:settings:1")]
+            [WebSetting("Discord Role Name(s)", "Name of the role in your Discord server that should be allowed to excecute server functions. For multiple roles, enter each one split by a comma (e.g Role1,Role2)", false, Subcategory: "Discord Config:settings:1")]
             public string DiscordRole = "";
 
             [WebSetting("Log Button Presses and Commands", "Log when buttons are pressed and commands are used", false, Subcategory: "Logging:output:4")]
