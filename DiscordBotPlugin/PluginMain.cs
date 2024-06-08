@@ -935,10 +935,7 @@ namespace DiscordBotPlugin
             // Check if the user has the appropriate role
             if (arg.User is SocketGuildUser user)
             {
-                _client.PurgeUserCache(); // Try to clear cache so we can get the latest roles
-
-                string[] roles = _settings.MainSettings.DiscordRole.Split(',');
-                hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
+                hasServerPermission = HasServerPermission(user);
             }
 
             if (!hasServerPermission)
@@ -2012,9 +2009,7 @@ namespace DiscordBotPlugin
 
                 if (command.User is SocketGuildUser user)
                 {
-                    // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                    string[] roles = _settings.MainSettings.DiscordRole.Split(',');
-                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
+                    hasServerPermission = HasServerPermission(user);
                 }
 
                 if (!hasServerPermission)
@@ -2139,9 +2134,7 @@ namespace DiscordBotPlugin
 
                 if (command.User is SocketGuildUser user)
                 {
-                    // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
-                    string[] roles = _settings.MainSettings.DiscordRole.Split(',');
-                    hasServerPermission = !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name));
+                    hasServerPermission = HasServerPermission(user);
                 }
 
                 if (!hasServerPermission)
@@ -2301,6 +2294,15 @@ namespace DiscordBotPlugin
             {
                 return (usage.ToString(gb ? "N2" : "N0") + (gb ? " GB" : "MB"));
             }
+        }
+
+        private bool HasServerPermission(SocketGuildUser user)
+        {
+            _client.PurgeUserCache(); // Try to clear cache so we can get the latest roles
+
+            // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
+            string[] roles = _settings.MainSettings.DiscordRole.Split(',');
+            return !_settings.MainSettings.RestrictFunctions || user.Roles.Any(r => roles.Contains(r.Name)) || user.Roles.Any(r => roles.Contains(r.Id.ToString()));
         }
 
         public class ServerInfo
