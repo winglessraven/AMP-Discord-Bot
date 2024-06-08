@@ -74,13 +74,13 @@ def update_amp_config(instance_path: Path) -> None:
                 plugins_list = eval(plugins)
                 if plugin_name not in plugins_list:
                     plugins_list.append(plugin_name)
-                lines[i] = 'AMP.LoadPlugins={}\n'.format(str(plugins_list))
-                with open(config_path, 'w') as f:
-                    f.writelines(lines)
-                logger.info(f'Updated AMP.LoadPlugins in {config_path}')
+                    lines[i] = 'AMP.LoadPlugins={}\n'.format(str(plugins_list))
+                    with open(config_path, 'w') as f:
+                        f.writelines(lines)
+                    logger.info(f'Updated AMP.LoadPlugins in {config_path}')
+                else:
+                    logger.info(f'{plugin_name} already in AMP.LoadPlugins')
                 break
-            else:
-                logger.info(f'{plugin_name} already in AMP.LoadPlugins')
 
 def copy_dll_to_plugin_folder(instance_path: Path) -> None:
     discordbot_plugin_dir = instance_path / plugin_dll_dir
