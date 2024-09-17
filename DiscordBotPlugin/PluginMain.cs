@@ -1971,7 +1971,7 @@ namespace DiscordBotPlugin
                 return;
 
             // Check if the message is in the specified chat-to-Discord channel
-            if (message.Channel.Name.Equals(_settings.MainSettings.ChatToDiscordChannel))
+            if (message.Channel.Name.Equals(_settings.MainSettings.ChatToDiscordChannel) || message.Channel.Id.ToString().Equals(_settings.MainSettings.ChatToDiscordChannel))
             {
                 // Send the chat command to the server
                 await SendChatCommand(message.Author.Username, message.CleanContent);
