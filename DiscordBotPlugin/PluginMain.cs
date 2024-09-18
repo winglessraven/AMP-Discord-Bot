@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms.VisualStyles;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace DiscordBotPlugin
 {
@@ -1339,6 +1340,12 @@ namespace DiscordBotPlugin
         /// <param name="args">The event arguments containing user information.</param>
         private async void UserJoins(object sender, UserEventArgs args)
         {
+            if (CheckIfPlayerJoinedWithinLast10Seconds(playerPlayTimes, args.User.Name))
+            {
+                log.Info("Player join event already processed");
+                return;
+            }
+
             // Remove the player from the list if they are already present
             playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
 
@@ -1406,6 +1413,12 @@ namespace DiscordBotPlugin
                 embed.WithCurrentTimestamp();
                 await _client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
             }
+        }
+
+        public static bool CheckIfPlayerJoinedWithinLast10Seconds(List<PlayerPlayTime> players, string playerName)
+        {
+            DateTime tenSecondsAgo = DateTime.Now.AddSeconds(-10);
+            return players.Any(p => p.PlayerName == playerName && p.JoinTime >= tenSecondsAgo);
         }
 
         async Task ExecuteWithDelay(int delay, Action action)
