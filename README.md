@@ -8,7 +8,8 @@ A full featured Discord bot plugin for [AMP by Cubecoders](https://cubecoders.co
 * Track playtime of players.
 * Assign permissions to a role so only select members can manage the server.
 
-> **NOTE:** The plugin cannot be used on ADS. It can only run on non-ADS instances.
+> [!IMPORTANT]
+> The plugin cannot be used on ADS. It can only run on non-ADS instances.
 
 **Submit any bug reports or feature requests [here](https://github.com/winglessraven/AMP-Discord-Bot/issues)**
 
@@ -82,6 +83,10 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 * Click the `OAuth2` option on the left hand menu followed by `URL Generator`
 * Select `bot` and `applications.commands` followed by `Send Messages`,`Manage Messages`,`Embed Links`, and `Read Message History`
 * Copy the resulting URL and paste into a new browser tab
+> [!TIP]
+> The resulting URL will be similar to this, but with your application ID under `client_id`:
+> 
+> https://discord.com/oauth2/authorize?client_id=12345&permissions=92160&integration_type=0&scope=bot+applications.commands
 * Log in if nedded and add the bot to your Discord server by selecting it in the list
 * If you plan to use pemissions for the server commands, create a new role on your Discord server to use later on.
 
