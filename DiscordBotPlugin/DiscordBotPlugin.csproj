@@ -41,6 +41,106 @@
 		</Reference>
 	</ItemGroup>
 
+		<ItemGroup>
+			<Reference Include="Discord.Net.Commands">
+				<HintPath>$(OutputPath)\Discord.Net.Commands.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Discord.Net.Core">
+				<HintPath>$(OutputPath)\Discord.Net.Core.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Discord.Net.Interactions">
+				<HintPath>$(OutputPath)\Discord.Net.Interactions.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Discord.Net.Rest">
+				<HintPath>$(OutputPath)\Discord.Net.Rest.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Discord.Net.Webhook">
+				<HintPath>$(OutputPath)\Discord.Net.Webhook.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Discord.Net.WebSocket">
+				<HintPath>$(OutputPath)\Discord.Net.WebSocket.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="DiscordBotPlugin">
+				<HintPath>$(OutputPath)\DiscordBotPlugin.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="DotNetZip">
+				<HintPath>$(OutputPath)\DotNetZip.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="mHttp">
+				<HintPath>$(OutputPath)\mHttp.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Microsoft.Bcl.AsyncInterfaces">
+				<HintPath>$(OutputPath)\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Microsoft.Build.Framework">
+				<HintPath>$(OutputPath)\Microsoft.Build.Framework.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Microsoft.Build.Utilities.Core">
+				<HintPath>$(OutputPath)\Microsoft.Build.Utilities.Core.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+				<HintPath>$(OutputPath)\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Mono.Posix">
+				<HintPath>$(OutputPath)\Mono.Posix.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Newtonsoft.Json">
+				<HintPath>$(OutputPath)\Newtonsoft.Json.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="System.Interactive.Async">
+				<HintPath>$(OutputPath)\System.Interactive.Async.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="System.Linq.Async">
+				<HintPath>$(OutputPath)\System.Linq.Async.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="System.Reactive">
+				<HintPath>$(OutputPath)\System.Reactive.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+
+			<Reference Include="Unity.Abstractions">
+				<HintPath>$(OutputPath)\Unity.Abstractions.dll</HintPath>
+				<Private>true</Private>
+			</Reference>
+		</ItemGroup>
+
+
+	
+
 	<ItemGroup>
 		<Content Include="DEVELOPER_README.txt" />
 		<EmbeddedResource Include="styles.css" />
@@ -50,13 +150,13 @@
 		<EmbeddedResource Include="panel.html" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Discord.Net" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.Commands" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.Core" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.Interactions" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.Rest" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.Webhook" Version="3.14.1" />
-		<PackageReference Include="Discord.Net.WebSocket" Version="3.14.1" />
+		<PackageReference Include="Discord.Net" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.Commands" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.Core" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.Interactions" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.Rest" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.Webhook" Version="3.16.0" />
+		<PackageReference Include="Discord.Net.WebSocket" Version="3.16.0" />
 		<PackageReference Include="ILRepack" Version="2.0.34">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -69,7 +169,7 @@
 		<PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
 		<PackageReference Include="System.Interactive.Async" Version="6.0.1" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
-		<PackageReference Include="System.Reactive" Version="6.0.0" />
+		<PackageReference Include="System.Reactive" Version="6.0.1" />
 		<PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
 		<PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
 	</ItemGroup>
@@ -101,7 +201,7 @@
 			<InputAssemblies Include="$(WorkingDirectory)\*.dll" Exclude="$(WorkingDirectory)\ModuleShared.dll" />
 		</ItemGroup>
 
-		<ILRepack OutputType="$(OutputType)" MainAssembly="$(AssemblyName).dll" Internalize="true" OutputAssembly="$(AssemblyName).7dll" InputAssemblies="@(InputAssemblies)" WilcardInputAssemblies="true" WorkingDirectory="$(WorkingDirectory)" />
+		<ILRepack OutputType="$(OutputType)" MainAssembly="$(AssemblyName).dll" Internalize="true" OutputAssembly="$(AssemblyName).dll" InputAssemblies="@(InputAssemblies)" WilcardInputAssemblies="true" WorkingDirectory="$(WorkingDirectory)" />
 
 	</Target>
 

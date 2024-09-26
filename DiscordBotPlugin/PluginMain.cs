@@ -212,10 +212,14 @@ namespace DiscordBotPlugin
             {
                 // Include MessageContent intent if chat is sent between Discord and the server
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent };
+                // Handle mismatch timezones
+                config.UseInteractionSnowflakeDate = false;
             }
             else
             {
                 config = new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
+                // Handle mismatch timezones
+                config.UseInteractionSnowflakeDate = false;
             }
 
             if (_settings.MainSettings.DiscordDebugMode)
