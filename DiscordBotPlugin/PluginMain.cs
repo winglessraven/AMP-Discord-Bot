@@ -18,11 +18,11 @@ namespace DiscordBotPlugin
         private readonly IFeatureManager features;
         private readonly BackupProvider backupProvider;
        
-        private Events events;
-        private Bot bot;
-        private Helpers helper;
-        private Commands commands;
-        private InfoPanel infoPanel;
+        private readonly Events events;
+        private readonly Bot bot;
+        private readonly Helpers helper;
+        private readonly Commands commands;
+        private readonly InfoPanel infoPanel;
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
             IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo, IFeatureManager Features, BackupProvider BackupProvider)

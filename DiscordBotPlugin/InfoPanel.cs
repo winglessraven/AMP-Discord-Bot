@@ -13,14 +13,14 @@ namespace DiscordBotPlugin
 {
     internal class InfoPanel
     {
-        private IApplicationWrapper application;
-        private Settings settings;
-        private Helpers helper;
-        private IAMPInstanceInfo aMPInstanceInfo;
-        private ILogger log;
-        private IConfigSerializer config;
+        private readonly IApplicationWrapper application;
+        private readonly Settings settings;
+        private readonly Helpers helper;
+        private readonly IAMPInstanceInfo aMPInstanceInfo;
+        private readonly ILogger log;
+        private readonly IConfigSerializer config;
         private Bot bot;
-        private Commands commands;
+        private readonly Commands commands;
 
         public InfoPanel(IApplicationWrapper application, Settings settings, Helpers helper, IAMPInstanceInfo aMPInstanceInfo, ILogger log, IConfigSerializer config, Bot bot, Commands commands)
         {

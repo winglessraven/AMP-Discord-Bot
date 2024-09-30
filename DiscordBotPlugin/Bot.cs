@@ -14,15 +14,15 @@ namespace DiscordBotPlugin
     internal class Bot
     {
         public DiscordSocketClient client;
-        private Settings settings;
-        private IAMPInstanceInfo aMPInstanceInfo;
-        private IApplicationWrapper application;
-        private ILogger log;
+        private readonly Settings settings;
+        private readonly IAMPInstanceInfo aMPInstanceInfo;
+        private readonly IApplicationWrapper application;
+        private readonly ILogger log;
         private Events events;
-        private Helpers helper;
-        private InfoPanel infoPanel;
-        private Commands commands;
-        private IPlatformInfo platform;
+        private readonly Helpers helper;
+        private readonly InfoPanel infoPanel;
+        private readonly Commands commands;
+        private readonly IPlatformInfo platform;
 
         public Bot(Settings settings, IAMPInstanceInfo aMPInstanceInfo, IApplicationWrapper application, ILogger log, Events events, Helpers helper, InfoPanel infoPanel, Commands commands, IPlatformInfo platform)
         {
@@ -89,8 +89,9 @@ namespace DiscordBotPlugin
                 await client.StartAsync();
                 log.Info("Bot successfully connected.");
 
-                await SetStatus();
-                await infoPanel.UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
+                _ = SetStatus();
+                _ = ConsoleOutputSend();
+                _ = infoPanel.UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
 
                 await Task.Delay(-1); // Blocks task until stopped
             }
@@ -100,7 +101,7 @@ namespace DiscordBotPlugin
             }
         }
 
-        public async void UpdatePresence(object sender, ApplicationStateChangeEventArgs args, bool force = false)
+        public async Task UpdatePresence(object sender, ApplicationStateChangeEventArgs args, bool force = false)
         {
             if (client == null)
             {
@@ -202,14 +203,6 @@ namespace DiscordBotPlugin
                     IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
                     var onlinePlayers = hasSimpleUserList.Users.Count;
                     var maximumPlayers = hasSimpleUserList.MaxUsers;
-
-                    // Get the CPU usage and memory usage
-                    var cpuUsage = application.GetCPUUsage();
-                    var cpuUsageString = cpuUsage + "%";
-                    var memUsage = helper.GetMemoryUsage();
-
-                    // Get the name of the instance
-                    var instanceName = platform.PlatformName;
 
                     var clientConnectionState = client != null ? client.ConnectionState.ToString() : "Client not initialized";
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + helper.GetMemoryUsage() + ", Bot Connection Status: " + clientConnectionState);
@@ -427,7 +420,7 @@ namespace DiscordBotPlugin
                 // Initialize bool for permission check
                 bool hasServerPermission = false;
 
-                if (command.User != null && command.User is SocketGuildUser user)
+                if (command.User is SocketGuildUser user)
                 {
                     hasServerPermission = HasServerPermission(user);
                 }
@@ -518,8 +511,6 @@ namespace DiscordBotPlugin
                             {
                                 await command.RespondAsync(playTime, ephemeral: true);
                             }
-
-                            // await command.User.SendMessageAsync(playTime);
                         }
                         break;
                     case "take-backup":
@@ -642,8 +633,6 @@ namespace DiscordBotPlugin
                             {
                                 await command.RespondAsync(playTime, ephemeral: true);
                             }
-
-                            // await command.User.SendMessageAsync(playTime);
                         }
                         break;
                     case "take-backup":
@@ -669,7 +658,7 @@ namespace DiscordBotPlugin
                 return null;
             }
 
-            var guild = client?.GetGuild(guildID);
+            var guild = client.GetGuild(guildID);
 
             if (guild == null)
             {
