@@ -264,13 +264,13 @@ namespace DiscordBotPlugin
                     ResourceReader reader = new ResourceReader();
 
                     if (!File.Exists(scriptFilePath))
-                        File.WriteAllText(scriptFilePath, reader.ReadResource("script.js"));
+                        await File.WriteAllTextAsync(scriptFilePath, reader.ReadResource("script.js"));
 
                     if (!File.Exists(stylesFilePath))
-                        File.WriteAllText(stylesFilePath, reader.ReadResource("styles.css"));
+                        await File.WriteAllTextAsync(stylesFilePath, reader.ReadResource("styles.css"));
 
                     if (!File.Exists(panelFilePath))
-                        File.WriteAllText(panelFilePath, reader.ReadResource("panel.html"));
+                        await File.WriteAllTextAsync(panelFilePath, reader.ReadResource("panel.html"));
 
                     var cpuUsage = application.GetCPUUsage() + "%";
                     var memoryUsage = helper.GetMemoryUsage();
@@ -306,7 +306,7 @@ namespace DiscordBotPlugin
 
                     string json = JsonConvert.SerializeObject(serverInfo, Formatting.Indented);
 
-                    File.WriteAllText(jsonFilePath, json);
+                    await File.WriteAllTextAsync(jsonFilePath, json);
                 }
                 catch (Exception ex)
                 {
@@ -353,7 +353,7 @@ namespace DiscordBotPlugin
                     application?.Update();
                     break;
                 case "manage-server":
-                    await commands?.ManageServer(arg);
+                    await commands.ManageServer(arg);
                     break;
                 case "backup-server":
                     commands?.BackupServer(user);

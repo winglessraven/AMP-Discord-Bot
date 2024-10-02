@@ -1,5 +1,4 @@
-﻿using Discord.WebSocket;
-using LocalFileBackupPlugin;
+﻿using LocalFileBackupPlugin;
 using ModuleShared;
 using System;
 using System.Collections.Generic;
@@ -10,47 +9,32 @@ namespace DiscordBotPlugin
     {
         private readonly Settings _settings;
         private readonly ILogger log;
-        private readonly IPlatformInfo platform;
         private readonly IRunningTasksManager _tasks;
         public readonly IApplicationWrapper application;
-        private readonly IAMPInstanceInfo aMPInstanceInfo;
-        private readonly IConfigSerializer _config;
-        private readonly IFeatureManager features;
-        private readonly BackupProvider backupProvider;
-       
-        private readonly Events events;
         private readonly Bot bot;
-        private readonly Helpers helper;
-        private readonly Commands commands;
-        private readonly InfoPanel infoPanel;
 
         public PluginMain(ILogger log, IConfigSerializer config, IPlatformInfo platform,
             IRunningTasksManager taskManager, IApplicationWrapper application, IAMPInstanceInfo AMPInstanceInfo, IFeatureManager Features, BackupProvider BackupProvider)
         {
-            _config = config;
             this.log = log;
-            this.platform = platform;
             _settings = config.Load<Settings>(AutoSave: true);
             _tasks = taskManager;
             this.application = application;
-            aMPInstanceInfo = AMPInstanceInfo;
-            features = Features;
 
-            features.PostLoadPlugin(application, "LocalFileBackupPlugin");
-            features.RegisterFeature(BackupProvider);
-            backupProvider = BackupProvider;
+            Features.PostLoadPlugin(application, "LocalFileBackupPlugin");
+            Features.RegisterFeature(BackupProvider);
 
             config.SaveMethod = PluginSaveMethod.KVP;
             config.KVPSeparator = "=";
 
             // Initialize some dependencies first
-            helper = new Helpers(_settings, this.log, this.application, _config, this.platform, null); // Temporary null for infoPanel
-            commands = new Commands(this.application, _settings, this.log, backupProvider, aMPInstanceInfo, null); // Temporary null for events
-            infoPanel = new InfoPanel(this.application, _settings, helper, aMPInstanceInfo, this.log, _config, null, commands); // Temporary null for bot
-            bot = new Bot(_settings, aMPInstanceInfo, this.application, this.log, null, helper, infoPanel, commands, this.platform); // Temporary null for events
+            Helpers helper = new Helpers(_settings, this.log, this.application, config, platform, null); // Temporary null for infoPanel
+            Commands commands = new Commands(this.application, _settings, this.log, BackupProvider, AMPInstanceInfo, null); // Temporary null for events
+            InfoPanel infoPanel = new InfoPanel(this.application, _settings, helper, AMPInstanceInfo, this.log, config, null, commands); // Temporary null for bot
+            bot = new Bot(_settings, AMPInstanceInfo, this.application, this.log, null, helper, infoPanel, commands); // Temporary null for events
 
             // Pass the dependencies with fully initialized objects
-            events = new Events(this.application, _settings, this.log, _config, bot, helper, backupProvider, infoPanel);
+            Events events = new Events(this.application, _settings, this.log, config, bot, helper, BackupProvider, infoPanel);
 
             // Complete the object initialization
             helper.SetInfoPanel(infoPanel); // Set the previously null dependency
@@ -96,7 +80,7 @@ namespace DiscordBotPlugin
                     try
                     {
                         _ = bot.ConnectDiscordAsync(_settings.MainSettings.BotToken);
-                        bot.UpdatePresence(null, null, true);
+                        _ = bot.UpdatePresence(null, null, true);
                     }
                     catch (Exception exception)
                     {

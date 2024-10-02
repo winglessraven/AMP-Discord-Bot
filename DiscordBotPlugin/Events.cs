@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using static DiscordBotPlugin.PluginMain;
 using System.Text.RegularExpressions;
 using LocalFileBackupPlugin;
+using System.Linq;
 
 namespace DiscordBotPlugin
 {
@@ -68,16 +69,15 @@ namespace DiscordBotPlugin
                 config.Save(settings);
             }
 
-            bot.UpdatePresence(null, null);
+            await bot.UpdatePresence(null, null);
 
             // Check if posting player events is disabled
             if (!settings.MainSettings.PostPlayerEvents)
                 return;
-
-            foreach (SocketGuild socketGuild in bot.client.Guilds)
+            foreach (var (socketGuild, eventChannel) in from SocketGuild socketGuild in bot.client.Guilds
+                                                        let eventChannel = bot.GetEventChannel(socketGuild.Id, settings.MainSettings.PostPlayerEventsChannel)
+                                                        select (socketGuild, eventChannel))
             {
-                var eventChannel = bot.GetEventChannel(socketGuild.Id, settings.MainSettings.PostPlayerEventsChannel);
-
                 if (eventChannel == null || !bot.CanBotSendMessageInChannel(bot.client, eventChannel.Id))
                 {
                     log.Error($"No permission to post to channel: {eventChannel?.Name ?? "Unknown"}.");
@@ -85,7 +85,6 @@ namespace DiscordBotPlugin
                 }
 
                 var joinColor = helper.GetColour("PlayerJoin", settings.ColourSettings.ServerPlayerJoinEventColour);
-
                 string userName = args.User.Name;
                 var embed = new EmbedBuilder
                 {
@@ -96,7 +95,6 @@ namespace DiscordBotPlugin
                     Footer = new EmbedFooterBuilder { Text = settings.MainSettings.BotTagline },
                     Timestamp = DateTimeOffset.Now
                 };
-
                 await bot.client.GetGuild(socketGuild.Id).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
             }
         }
@@ -136,7 +134,7 @@ namespace DiscordBotPlugin
                 infoPanel.playerPlayTimes.RemoveAll(p => p.PlayerName == args.User.Name);
 
                 log.Info("Player leave event processed.");
-                await helper.ExecuteWithDelay(2000, () => bot.UpdatePresence(null, null));
+                await helper.ExecuteWithDelay(2000, action: () => _ = bot.UpdatePresence(null, null));
             }
             catch (Exception ex)
             {
@@ -146,10 +144,10 @@ namespace DiscordBotPlugin
             // Check if posting player events is disabled
             if (!settings.MainSettings.PostPlayerEvents)
                 return;
-
-            foreach (SocketGuild socketGuild in bot.client.Guilds)
+            foreach (var (socketGuild, eventChannel) in from SocketGuild socketGuild in bot.client.Guilds
+                                                        let eventChannel = bot.GetEventChannel(socketGuild.Id, settings.MainSettings.PostPlayerEventsChannel)
+                                                        select (socketGuild, eventChannel))
             {
-                var eventChannel = bot.GetEventChannel(socketGuild.Id, settings.MainSettings.PostPlayerEventsChannel);
                 if (eventChannel == null || !bot.CanBotSendMessageInChannel(bot.client, eventChannel.Id))
                 {
                     log.Error($"No permission to post to channel: {eventChannel?.Name ?? "Unknown"}.");
@@ -157,7 +155,6 @@ namespace DiscordBotPlugin
                 }
 
                 var leaveColor = helper.GetColour("PlayerJoin", settings.ColourSettings.ServerPlayerJoinEventColour);
-
                 string userName = args.User.Name;
                 var embed = new EmbedBuilder
                 {
@@ -168,7 +165,6 @@ namespace DiscordBotPlugin
                     Footer = new EmbedFooterBuilder { Text = settings.MainSettings.BotTagline },
                     Timestamp = DateTimeOffset.Now
                 };
-
                 await bot.client.GetGuild(socketGuild.Id).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
             }
         }
@@ -263,7 +259,7 @@ namespace DiscordBotPlugin
         /// </summary>
         public void ApplicationStateChange(object sender, ApplicationStateChangeEventArgs args)
         {
-            bot.UpdatePresence(sender, args);
+            _ = bot.UpdatePresence(sender, args);
         }
 
         /// <summary>

@@ -22,9 +22,8 @@ namespace DiscordBotPlugin
         private readonly Helpers helper;
         private readonly InfoPanel infoPanel;
         private readonly Commands commands;
-        private readonly IPlatformInfo platform;
 
-        public Bot(Settings settings, IAMPInstanceInfo aMPInstanceInfo, IApplicationWrapper application, ILogger log, Events events, Helpers helper, InfoPanel infoPanel, Commands commands, IPlatformInfo platform)
+        public Bot(Settings settings, IAMPInstanceInfo aMPInstanceInfo, IApplicationWrapper application, ILogger log, Events events, Helpers helper, InfoPanel infoPanel, Commands commands)
         {
             this.settings = settings;
             this.aMPInstanceInfo = aMPInstanceInfo;
@@ -34,7 +33,6 @@ namespace DiscordBotPlugin
             this.helper = helper;
             this.infoPanel = infoPanel;
             this.commands = commands;
-            this.platform = platform;
         }
 
         public void SetEvents(Events events)
@@ -194,7 +192,7 @@ namespace DiscordBotPlugin
         public async Task SetStatus()
         {
             // While the bot is active, update its status
-            while (settings != null && settings.MainSettings != null && settings.MainSettings.BotActive)
+            while (settings != null && settings.MainSettings != null && settings.MainSettings.BotActive && client != null)
             {
                 try
                 {
@@ -204,7 +202,7 @@ namespace DiscordBotPlugin
                     var onlinePlayers = hasSimpleUserList.Users.Count;
                     var maximumPlayers = hasSimpleUserList.MaxUsers;
 
-                    var clientConnectionState = client != null ? client.ConnectionState.ToString() : "Client not initialized";
+                    var clientConnectionState = client.ConnectionState.ToString();
                     log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + helper.GetMemoryUsage() + ", Bot Connection Status: " + clientConnectionState);
 
                     // Update the embed if it exists
@@ -214,7 +212,7 @@ namespace DiscordBotPlugin
                     }
 
                     //change presence if required
-                    UpdatePresence(null, null, true);
+                    _ = UpdatePresence(null, null, true);
                 }
                 catch (System.Net.WebException exception)
                 {
@@ -353,7 +351,7 @@ namespace DiscordBotPlugin
                 {
                     log.Error("Client or CurrentUser is null in ClientReady method.");
                     return;
-                }                
+                }
             }
 
             try
@@ -367,7 +365,7 @@ namespace DiscordBotPlugin
                 // Bulk overwrite the global application commands with the built command properties
                 await client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
             }
-            catch (HttpException exception)
+            catch (Exception exception)
             {
                 log.Error(exception.Message);
             }
@@ -488,7 +486,7 @@ namespace DiscordBotPlugin
                                     using (FileStream fileStream = File.Create(path))
                                     {
                                         byte[] text = new UTF8Encoding(true).GetBytes(playTime);
-                                        fileStream.Write(text, 0, text.Length);
+                                        await fileStream.WriteAsync(text, 0, text.Length);
                                     }
                                 }
                                 catch (Exception ex)
@@ -607,11 +605,9 @@ namespace DiscordBotPlugin
                                 try
                                 {
                                     playTime = playTime.Replace("```", "");
-                                    using (FileStream fileStream = File.Create(path))
-                                    {
-                                        byte[] text = new UTF8Encoding(true).GetBytes(playTime);
-                                        fileStream.Write(text, 0, text.Length);
-                                    }
+                                    using FileStream fileStream = File.Create(path);
+                                    byte[] text = new UTF8Encoding(true).GetBytes(playTime);
+                                    await fileStream.WriteAsync(text, 0, text.Length);
                                 }
                                 catch (Exception ex)
                                 {
@@ -693,7 +689,7 @@ namespace DiscordBotPlugin
                 log.Warning("Client is null in HasServerPermission.");
             }
 
-            if(settings != null)
+            if (settings != null)
             {
                 // The user has the permission if either RestrictFunctions is turned off, or if they are part of the appropriate role.
                 string[] roles = settings.MainSettings.DiscordRole.Split(',');
@@ -832,7 +828,7 @@ namespace DiscordBotPlugin
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task ChatMessageSend(string Message)
         {
-            if(client == null)
+            if (client == null)
             {
                 log.Error("Client is null in ChatMessageSend");
                 return;
@@ -840,19 +836,16 @@ namespace DiscordBotPlugin
 
             // Get all guilds the bot is a member of
             var guilds = client.Guilds;
-
+            foreach (var (guildID, eventChannel) in
             // Iterate over each guild
-            foreach (SocketGuild guild in guilds)
+            from SocketGuild guild in guilds// Find the text channel with the specified name
+            let guildID = guild.Id
+            let eventChannel = GetEventChannel(guildID, settings.MainSettings.ChatToDiscordChannel)
+            where eventChannel != null
+            select (guildID, eventChannel))
             {
-                // Find the text channel with the specified name
-                var guildID = guild.Id;
-                var eventChannel = GetEventChannel(guildID, settings.MainSettings.ChatToDiscordChannel);
-
-                if (eventChannel != null)
-                {
-                    // Send the message to the channel
-                    await client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync("`" + Message + "`");
-                }
+                // Send the message to the channel
+                await client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync("`" + Message + "`");
             }
         }
 
@@ -863,7 +856,10 @@ namespace DiscordBotPlugin
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task ConsoleOutputSend()
         {
-            while (settings != null && settings.MainSettings != null && settings.MainSettings.SendConsoleToDiscord && settings.MainSettings.BotActive)
+            while (settings != null &&
+                   settings.MainSettings != null &&
+                   settings.MainSettings.SendConsoleToDiscord &&
+                   settings.MainSettings.BotActive)
             {
                 if (consoleOutput.Count > 0)
                 {
@@ -876,24 +872,23 @@ namespace DiscordBotPlugin
                         // Split the output into multiple strings, each presented within a code block
                         List<string> outputStrings = helper.SplitOutputIntoCodeBlocks(messages);
 
-                        // Get all guilds the bot is a member of
+                        // Get all guilds the bot is a member of, ensuring it's not null
                         var guilds = client.Guilds;
 
                         // Iterate over each output string
                         foreach (string output in outputStrings)
                         {
-                            // Iterate over each guild
-                            foreach (SocketGuild guild in guilds)
-                            {
-                                // Find the text channel with the specified name
-                                var guildID = guild.Id;
-                                var eventChannel = GetEventChannel(guildID, settings.MainSettings.ConsoleToDiscordChannel);
+                            // Use LINQ to select non-null text channels
+                            var textChannels = (from SocketGuild guild in guilds
+                                                let eventChannel = GetEventChannel(guild.Id, settings.MainSettings.ConsoleToDiscordChannel)
+                                                where eventChannel != null
+                                                let textChannel = guild.GetTextChannel(eventChannel.Id)
+                                                where textChannel != null
+                                                select textChannel)?.ToList() ?? new List<SocketTextChannel>();
 
-                                if (eventChannel != null)
-                                {
-                                    // Send the message to the channel
-                                    await client.GetGuild(guildID).GetTextChannel(eventChannel.Id).SendMessageAsync(output);
-                                }
+                            foreach (var textChannel in textChannels)
+                            {
+                                await textChannel.SendMessageAsync(output);
                             }
                         }
 
@@ -910,6 +905,7 @@ namespace DiscordBotPlugin
                 await Task.Delay(10000);
             }
         }
+
 
         /// <summary>
         /// Show play time on the server
@@ -934,11 +930,12 @@ namespace DiscordBotPlugin
                  .WithCurrentTimestamp();
 
             // Get the guild and channel IDs
-            var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id;
+            var guildId = (msg.Channel as SocketGuildChannel).Guild.Id;
             var channelId = msg.Channel.Id;
 
             // Post the leaderboard in the specified channel
-            await client.GetGuild(guildId.Value)?.GetTextChannel(channelId)?.SendMessageAsync(embed: embed.Build());
+            await client.GetGuild(guildId).GetTextChannel(channelId).SendMessageAsync(embed: embed.Build());
+
         }
 
         /// <summary>
