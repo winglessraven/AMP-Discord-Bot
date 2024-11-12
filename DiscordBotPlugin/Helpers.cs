@@ -3,6 +3,7 @@ using ModuleShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using static DiscordBotPlugin.PluginMain;
 
@@ -325,6 +326,27 @@ namespace DiscordBotPlugin
             }
 
             return outputStrings;
+        }
+
+        public async Task<string> GetExternalIpAddressAsync()
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    // Use a service that returns the IP address in plain text
+                    HttpResponseMessage response = await client.GetAsync("https://api.ipify.org");
+                    response.EnsureSuccessStatusCode();
+
+                    string ipAddress = await response.Content.ReadAsStringAsync();
+                    return ipAddress;
+                }
+                catch (Exception ex)
+                {
+                    log.Error("Error fetching IP: " + ex.Message);
+                    return null;
+                }
+            }
         }
     }
 }

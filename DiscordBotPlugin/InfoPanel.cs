@@ -96,7 +96,13 @@ namespace DiscordBotPlugin
             }
 
             embed.AddField("Server Name", "```" + settings?.MainSettings?.ServerDisplayName + "```", false);
-            embed.AddField("Server IP", "```" + settings?.MainSettings?.ServerConnectionURL + "```", false);
+            string connectionURL = settings.MainSettings.ServerConnectionURL;
+            if (connectionURL.ToLower().Contains("{publicip}"))
+            {
+                string ipAddress = await helper.GetExternalIpAddressAsync();
+                connectionURL = connectionURL.ToLower().Replace("{publicip}", ipAddress);
+            }
+            embed.AddField("Server IP", "```" + connectionURL + "```", false);
 
             if (!string.IsNullOrEmpty(settings?.MainSettings?.ServerPassword))
             {

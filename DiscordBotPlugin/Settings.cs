@@ -23,7 +23,7 @@ namespace DiscordBotPlugin
             [WebSetting("Server Display Name", "Displayed in the bot info panel", false, Subcategory: "Server Info:page_info:2")]
             public string ServerDisplayName = "";
 
-            [WebSetting("Server Connection URL", "Displayed in bot info panel", false, Subcategory: "Server Info:page_info:2")]
+            [WebSetting("Server Connection URL", "Displayed in bot info panel. Use {PublicIP} variable to show your external IP address.", false, Subcategory: "Server Info:page_info:2")]
             public string ServerConnectionURL = "";
 
             [WebSetting("Server Password", "Displayed in bot info panel", false, Subcategory: "Server Info:page_info:2")]
@@ -143,7 +143,7 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotSettings MainSettings = new DiscordBotSettings();
-        
+
         [Description("Discord Bot:smart_toy")]
         [SettingsGroupName("Discord Bot")]
         [Serializable]
@@ -191,7 +191,7 @@ namespace DiscordBotPlugin
         public class DiscordBotGameSpecificSettings : SettingSectionStore
         {
             [WebSetting("Valheim Join Code", "Look for Valheim join code and display it in the info panel (restart the server after enabling)", false, Subcategory: "Game Specific:sports_esports:6")]
-                public bool ValheimJoinCode = false;
+            public bool ValheimJoinCode = false;
         }
 
         public DiscordBotGameSpecificSettings GameSpecificSettings = new DiscordBotGameSpecificSettings();
@@ -204,7 +204,7 @@ namespace DiscordBotPlugin
             [WebSetting("Support", "For support, or to submit issues and feature requests visit the [GitHub](https://github.com/winglessraven/AMP-Discord-Bot) page.", false, Subcategory: "About:info:8")]
             public int? AboutMessage = null;
 
-            [WebSetting("Donations", "If you appreciate my work, donations are gratefully received! Visit my [Sponsor](https://github.com/sponsors/winglessraven) page.", false, Subcategory: "About:info:8")]                
+            [WebSetting("Donations", "If you appreciate my work, donations are gratefully received! Visit my [Sponsor](https://github.com/sponsors/winglessraven) page.", false, Subcategory: "About:info:8")]
             public int? DonationsMessage = null;
 
             [WebSetting("AMP Discord Bot", "Created by winglessraven", false, Subcategory: "About:info:8")]
