@@ -339,3 +339,4 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 #/DiscordBotPlugin/DiscordBotPlugin.csproj
+/DiscordBotPlugin/DiscordBotPlugin.csproj
