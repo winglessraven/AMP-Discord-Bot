@@ -97,10 +97,10 @@ namespace DiscordBotPlugin
 
             embed.AddField("Server Name", "```" + settings?.MainSettings?.ServerDisplayName + "```", false);
             string connectionURL = settings.MainSettings.ServerConnectionURL;
-            if (connectionURL.ToLower().Contains("{ipaddress}"))
+            if (connectionURL.ToLower().Contains("{publicip}"))
             {
                 string ipAddress = await helper.GetExternalIpAddressAsync();
-                connectionURL = connectionURL.ToLower().Replace("{ipaddress}", ipAddress);
+                connectionURL = connectionURL.ToLower().Replace("{publicip}", ipAddress);
             }
             embed.AddField("Server IP", "```" + connectionURL + "```", false);
 

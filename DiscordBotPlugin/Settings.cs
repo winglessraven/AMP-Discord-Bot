@@ -23,7 +23,7 @@ namespace DiscordBotPlugin
             [WebSetting("Server Display Name", "Displayed in the bot info panel", false, Subcategory: "Server Info:page_info:2")]
             public string ServerDisplayName = "";
 
-            [WebSetting("Server Connection URL", "Displayed in bot info panel. Use {IPAddress} variable to show your external IP address.", false, Subcategory: "Server Info:page_info:2")]
+            [WebSetting("Server Connection URL", "Displayed in bot info panel. Use {PublicIP} variable to show your external IP address.", false, Subcategory: "Server Info:page_info:2")]
             public string ServerConnectionURL = "";
 
             [WebSetting("Server Password", "Displayed in bot info panel", false, Subcategory: "Server Info:page_info:2")]
