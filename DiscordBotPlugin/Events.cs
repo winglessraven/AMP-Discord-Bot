@@ -18,7 +18,7 @@ namespace DiscordBotPlugin
         private readonly IConfigSerializer config;
         private readonly Bot bot;
         private readonly Helpers helper;
-        private readonly BackupProvider backupProvider;
+        private BackupProvider backupProvider;
         private readonly InfoPanel infoPanel;
 
         public SocketGuildUser currentUser;
@@ -38,6 +38,11 @@ namespace DiscordBotPlugin
         public void SetCurrentUser(SocketGuildUser currentUser)
         {
             this.currentUser = currentUser;
+        }
+
+        public void SetBackupProvider(BackupProvider backupProvider)
+        {
+            this.backupProvider = backupProvider;
         }
 
         /// <summary>

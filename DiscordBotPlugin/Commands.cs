@@ -34,6 +34,11 @@ namespace DiscordBotPlugin
             this.events = events;
         }
 
+        public void SetBackupProvider(BackupProvider backupProvider)
+        {
+            this.backupProvider = backupProvider;
+        }
+
         /// <summary>
         /// Send a command to the AMP instance
         /// </summary>
