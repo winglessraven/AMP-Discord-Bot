@@ -159,7 +159,7 @@ namespace DiscordBotPlugin
                     return;
                 }
 
-                var leaveColor = helper.GetColour("PlayerJoin", settings.ColourSettings.ServerPlayerJoinEventColour);
+                var leaveColor = helper.GetColour("PlayerLeave", settings.ColourSettings.ServerPlayerLeaveEventColour);
                 string userName = args.User.Name;
                 var embed = new EmbedBuilder
                 {
