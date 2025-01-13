@@ -120,26 +120,27 @@ if __name__ == "__main__":
     logger.info(f'Found instances: {[path.name for path in instance_dirs]}')
 
     # Remove ADS instance
-    instance_dirs = [d for d in instance_dirs if d.name != ads_instance_name]
+    filtered_instance_dirs = [d for d in instance_dirs if d.name != ads_instance_name]
+    logger.info(f'Instances after excluding {ads_instance_name}: {[path.name for path in filtered_instance_dirs]}')
 
     if not args.update_only:
         # Select instances to process
-        for instance_folder in list(instance_dirs):
+        for instance_folder in list(filtered_instance_dirs):
             choice = get_user_input(f'Process instance {instance_folder.name}?', 'y')
             if choice.lower() != 'y':
                 logger.info(f'Skipping instance {instance_folder.name}')
-                instance_dirs.remove(instance_folder)
+                filtered_instance_dirs.remove(instance_folder)
     else:
-        instance_dirs = [d for d in instance_dirs if (d / plugin_dll_dir / dll_file_name).is_file()]
-        logger.info(f'Selected instances for update: {[path.name for path in instance_dirs]}')
+        filtered_instance_dirs = [d for d in filtered_instance_dirs if (d / plugin_dll_dir / dll_file_name).is_file()]
+        logger.info(f'Selected instances for update: {[path.name for path in filtered_instance_dirs]}')
 
     # Stop selected instances
-    for instance_folder in instance_dirs:
+    for instance_folder in filtered_instance_dirs:
         logger.info(f'Stopping instance {instance_folder.name}')
         execute_os_command(['ampinstmgr', 'stop', instance_folder.name])
 
     # Copy plugin dll and update amp config
-    for instance_folder in instance_dirs:
+    for instance_folder in filtered_instance_dirs:
         copy_dll_to_plugin_folder(instance_folder)
         if not args.update_only:
             update_amp_config(instance_folder)
@@ -148,7 +149,7 @@ if __name__ == "__main__":
         # (Re)activate ADS instance
         logger.info(f'Stopping {ads_instance_name}')
         execute_os_command(['ampinstmgr', 'stop', ads_instance_name])
-        for instance_folder in instance_dirs:
+        for instance_folder in filtered_instance_dirs:
             logger.info(f'Reactivating instance {instance_folder.name}')
             execute_os_command(['ampinstmgr', 'reactivate', instance_folder.name, developer_license_key])
         logger.info(f'Starting {ads_instance_name}')
@@ -157,6 +158,6 @@ if __name__ == "__main__":
         logger.info("Skipping activation, make sure you're using a developer license key for this instance.")
 
     # Start selected instances
-    for instance_folder in instance_dirs:
+    for instance_folder in filtered_instance_dirs:
         logger.info(f'Starting instance {instance_folder.name}')
         execute_os_command(['ampinstmgr', 'start', instance_folder.name])
