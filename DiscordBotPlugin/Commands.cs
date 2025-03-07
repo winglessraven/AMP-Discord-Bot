@@ -108,8 +108,14 @@ namespace DiscordBotPlugin
                     return Task.CompletedTask;
                 }
 
+                string wrapper = "";
+
+                if (application.ApplicationName == "Seven Days To Die")
+                    wrapper = "\"";
+
+
                 // Construct the command to send
-                string command = $"say <{author}> {msg}";
+                string command = $"say {wrapper}<{author}> {msg}{wrapper}";
 
                 // Send the chat command to the AMP instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;

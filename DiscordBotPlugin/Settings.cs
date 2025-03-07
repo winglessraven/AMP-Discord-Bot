@@ -120,7 +120,7 @@ namespace DiscordBotPlugin
             [WebSetting("Chat Discord Channel", "Discord channel name (or ID) to send chat messages to (if enabled)", false, Subcategory: "Logging:output:4")]
             public string ChatToDiscordChannel = "";
 
-            [WebSetting("Send Chat from Discord to Server", "Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)", false, Subcategory: "Logging:output:4")]
+            [WebSetting("Send Chat from Discord to Server", "Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft and Seven Days to Die)", false, Subcategory: "Logging:output:4")]
             public bool SendDiscordChatToServer = false;
 
             [WebSetting("Send Console to Discord", "Send console output to a Discord channel", false, Subcategory: "Logging:output:4")]
