@@ -878,8 +878,13 @@ namespace DiscordBotPlugin
                         // Iterate over each output string
                         foreach (string output in outputStrings)
                         {
+
+                            //sanitize possible passwords
+                            string pattern = @"(""Password"":\s*"")(.*?)("")";
+                            string redacted = Regex.Replace(output, pattern, "$1[REDACTED]$3");
+                    
                             // Use LINQ to select non-null text channels
-                            var textChannels = (from SocketGuild guild in guilds
+                                                var textChannels = (from SocketGuild guild in guilds
                                                 let eventChannel = GetEventChannel(guild.Id, settings.MainSettings.ConsoleToDiscordChannel)
                                                 where eventChannel != null
                                                 let textChannel = guild.GetTextChannel(eventChannel.Id)
@@ -888,7 +893,7 @@ namespace DiscordBotPlugin
 
                             foreach (var textChannel in textChannels)
                             {
-                                await textChannel.SendMessageAsync(output);
+                                await textChannel.SendMessageAsync(redacted);
                             }
                         }
 
