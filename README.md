@@ -73,14 +73,18 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 * Click `New Application`
 * Enter a name for your application and click `Create`
 
-### Create the Bot
-* Click `Bot` on the menu bar along the left, then click `Add Bot`
+### Change Installation Settings
+* Click `Installation` on the menu bar along the left, then deselect `User Install` and set `Install Link` to `None`
+* Save your changes
+
+### Bot Settings
+* Click `Bot` on the menu bar along the left, then disable `Public Bot`
 * Give your bot an icon and enable `Server Members Intent` (this is to ensure that cached member groups are not used if using permissions for controlling servers (start/stop/update/restart/kill)) AND `Message Content Intent` (this is for writing chat messages back to Minecraft servers if enabled)
 * Save your changes
 * Copy your bot token and paste it in the token field of the Discord Bot menu in AMP
 
 ### Configure Permissions and Add to your Discord Server
-* Click the `OAuth2` option on the left hand menu followed by `URL Generator`
+* Click the `OAuth2` option on the left hand menu
 * Select `bot` and `applications.commands` followed by `Send Messages`,`Manage Messages`,`Embed Links`, and `Read Message History`
 * Copy the resulting URL and paste into a new browser tab
 > [!TIP]
