@@ -465,7 +465,7 @@ namespace DiscordBotPlugin
                             await command.FollowupAsync("Restart command sent to the application", ephemeral: true);
                             break;
                         case "kill-server":
-                            application.Restart();
+                            application.Kill();
                             await CommandResponse("Kill Server", command);
                             await command.FollowupAsync("Kill command sent to the application", ephemeral: true);
                             break;
@@ -588,7 +588,7 @@ namespace DiscordBotPlugin
                             await command.FollowupAsync("Restart command sent to the application", ephemeral: true);
                             break;
                         case "kill-server":
-                            application.Restart();
+                            application.Kill();
                             await CommandResponse("Kill Server", command);
                             await command.FollowupAsync("Kill command sent to the application", ephemeral: true);
                             break;
