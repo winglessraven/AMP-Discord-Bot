@@ -105,6 +105,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Playtime Leaderboard", "Display the playtime leaderboard on the info panel - top 5 are shown", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowPlaytimeLeaderboard = false;
 
+            [WebSetting("Leaderboard Places", "Number of places to show on the panel if leaderboard option enabled", false, Subcategory: "Server Info:page_info:2")]
+            public int PlaytimeLeaderboardPlaces = 5;
+
             [WebSetting("Remove Bot Name", "Remove [BOT NAME] from the command", false, Subcategory: "Discord Config:settings:1")]
             public bool RemoveBotName = false;
 

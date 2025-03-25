@@ -139,8 +139,8 @@ namespace DiscordBotPlugin
 
             if (settings?.MainSettings?.ShowPlaytimeLeaderboard == true)
             {
-                string leaderboard = helper.GetPlayTimeLeaderBoard(5, false, null, false, false);
-                embed.AddField("Top 5 Players by Play Time", leaderboard, false);
+                string leaderboard = helper.GetPlayTimeLeaderBoard(settings.MainSettings.PlaytimeLeaderboardPlaces, false, null, false, false);
+                embed.AddField("Top " + settings.MainSettings.PlaytimeLeaderboardPlaces + " Players by Play Time", leaderboard, false);
             }
 
             if (settings?.GameSpecificSettings?.ValheimJoinCode == true && !string.IsNullOrEmpty(valheimJoinCode) && application.State == ApplicationState.Ready)
