@@ -97,14 +97,30 @@ def get_instance_dirs(base_path: Path) -> list[Path]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AMP Discord Bot Install Script")
     parser.add_argument('--update-only', action='store_true', help="Update only existing instances")
+    parser.add_argument('--base-path', type=str, help="Path to AMP instances")
+    parser.add_argument('--ads-name', type=str, help="Name of the ADS instance")
+    parser.add_argument('--license-key', type=str, help="Developer license key")
+
     args = parser.parse_args()
 
-    # Get user input
-    base_path = Path(get_user_input("Set base path", base_path))
-    ads_instance_name = get_user_input("Set ADS name", ads_instance_name)
+    # Base path
+    if args.base_path:
+        base_path = Path(args.base_path)
+    else:
+        base_path = Path(get_user_input("Set base path", base_path))
 
+    # ADS name
+    if args.ads_name:
+        ads_instance_name = args.ads_name
+    else:
+        ads_instance_name = get_user_input("Set ADS name", ads_instance_name)
+
+    # License key
     if not args.update_only:
-        developer_license_key = get_user_input("Set developer license key [Empty skips activation]", developer_license_key)
+        if args.license_key:
+            developer_license_key = args.license_key
+        else:
+            developer_license_key = get_user_input("Set developer license key [Empty skips activation]", developer_license_key)
 
     # Download latest plugin dll
     with urllib.request.urlopen(github_api_url) as response:
