@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 
 namespace DiscordBotPlugin
 {
@@ -395,10 +396,15 @@ namespace DiscordBotPlugin
         /// <param name="command">The incoming socket slash command.</param>
         public async Task SlashCommandHandler(SocketSlashCommand command)
         {
-
             try
             {
+                var startTime = DateTime.UtcNow;
+                log.Info($"[CMD] Received slash command interaction: User={command.User.Username}({command.User.Id}), Guild={command.GuildId}, Channel={command.ChannelId}, CommandId={command.CommandId}, CommandName={command.Data.Name}, Options={JsonConvert.SerializeObject(command.Data.Options)}");
+
+                log.Debug($"[CMD] Attempting to defer command {command.CommandId} (Ephemeral=True)...");
+                var deferTime = DateTime.UtcNow;
                 await command.DeferAsync(ephemeral: true);
+                log.Debug($"[CMD] Successfully deferred command {command.CommandId}. Time taken: {(deferTime - startTime).TotalMilliseconds}ms.");
 
                 string commandName = command.Data.Name;
                 if (!settings.MainSettings.RemoveBotName && command.Data.Options.Count > 0)
@@ -406,14 +412,13 @@ namespace DiscordBotPlugin
                     commandName = command.Data.Options.First().Name;
                 }
 
-                log.Info($"SlashCommandHandler: Received command '{commandName}' from user {command.User.Username} (ID: {command.User.Id})");
-
                 // Using bot name as the base command
                 if (!settings.MainSettings.RemoveBotName)
                 {
                     // Leaderboard permissionless
                     if (command.Data.Options != null && command.Data.Options.First().Name.Equals("show-playtime"))
                     {
+                        log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
                         if (command.Data.Options.First().Options.Count > 0)
                         {
                             string playerName = command.Data.Options.First().Options.First().Value.ToString();
@@ -425,23 +430,31 @@ namespace DiscordBotPlugin
                             await ShowPlayerPlayTime(command);
                             await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
                         }
+                        log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                         return;
                     }
 
                     // Initialize bool for permission check
                     bool hasServerPermission = false;
 
+                    log.Debug($"[CMD] Performing permission check for user {command.User.Username} (ID: {command.User.Id}) for command '{commandName}'. Required Role(s): '{settings.MainSettings.DiscordRole}', Restrict Functions: {settings.MainSettings.RestrictFunctions}");
+
                     if (command.User is SocketGuildUser user)
                     {
                         hasServerPermission = HasServerPermission(user);
+                        log.Debug($"[CMD]] Permission check result for user {command.User.Username}: {hasServerPermission}");
                     }
 
                     if (!hasServerPermission)
                     {
+                        log.Warning($"[CMD] User {command.User.Username} lacks permission for command '{commandName}'. Responding with permission denied.");
                         await command.FollowupAsync("You do not have permission to use this command!", ephemeral: true);
+                        log.Info($"[CMD] Permission denied response sent for command {command.CommandId}. Total time: {(DateTime.UtcNow - startTime).TotalMilliseconds}ms.");
                         return;
                     }
 
+
+                    log.Debug($"[CMD] Start processing interaction for command '{commandName}'");
                     switch (command.Data.Options.First().Name)
                     {
                         case "info":
@@ -530,6 +543,7 @@ namespace DiscordBotPlugin
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
                     }
+                    log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                 }
                 else
                 {
@@ -537,6 +551,7 @@ namespace DiscordBotPlugin
                     // Leaderboard permissionless
                     if (command.Data.Name.Equals("show-playtime"))
                     {
+                        log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
                         if (command.Data.Options.Count > 0)
                         {
                             string playerName = command.Data.Options.First().Value.ToString();
@@ -548,23 +563,29 @@ namespace DiscordBotPlugin
                             await ShowPlayerPlayTime(command);
                             await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
                         }
+                        log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                         return;
                     }
 
                     // Initialize bool for permission check
                     bool hasServerPermission = false;
 
+                    log.Debug($"[CMD] Performing permission check for user {command.User.Username} (ID: {command.User.Id}) for command '{commandName}'. Required Role(s): '{settings.MainSettings.DiscordRole}', Restrict Functions: {settings.MainSettings.RestrictFunctions}");
                     if (command.User is SocketGuildUser user)
                     {
                         hasServerPermission = HasServerPermission(user);
+                        log.Debug($"[CMD]] Permission check result for user {command.User.Username}: {hasServerPermission}");
                     }
 
                     if (!hasServerPermission)
                     {
+                        log.Warning($"[CMD] User {command.User.Username} lacks permission for command '{commandName}'. Responding with permission denied.");
                         await command.FollowupAsync("You do not have permission to use this command!", ephemeral: true);
+                        log.Info($"[CMD] Permission denied response sent for command {command.CommandId}. Total time: {(DateTime.UtcNow - startTime).TotalMilliseconds}ms.");
                         return;
                     }
 
+                    log.Debug($"[CMD] Start processing interaction for command '{commandName}'");
                     switch (command.Data.Name)
                     {
                         case "info":
@@ -650,6 +671,7 @@ namespace DiscordBotPlugin
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
                     }
+                    log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                 }
             }
             catch (Exception ex)
@@ -756,8 +778,8 @@ namespace DiscordBotPlugin
         /// <param name="arg">SocketMessageComponent object containing information about the button click.</param>
         public async Task ButtonResponse(string Command, SocketMessageComponent arg)
         {
-
-            await arg.DeferAsync();
+            log.Debug($"[BTN_LOG] Preparing button log response for action '{Command}' by user {arg.User.Username} (ButtonId: {arg.Data.CustomId})");
+            await arg.DeferAsync(ephemeral: true);
 
             // Only log if option is enabled
             if (settings.MainSettings.LogButtonsAndCommands)
@@ -1057,5 +1079,217 @@ namespace DiscordBotPlugin
 
             await client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
         }
+
+        /// <summary>
+        /// Performs validation of critical configuration settings after the bot is ready.
+        /// </summary>
+        public async Task PerformInitialConfigurationValidationAsync()
+        {
+            if (client?.ConnectionState != ConnectionState.Connected)
+            {
+                log.Warning("[VALIDATE] Cannot perform configuration validation - client not connected.");
+                return;
+            }
+            if (!settings.MainSettings.BotActive)
+            {
+                log.Info("[VALIDATE] Skipping configuration validation - Bot is not set to Active.");
+                return;
+            }
+
+            log.Info("[VALIDATE] Performing initial configuration validation...");
+            bool allValid = true;
+
+            // Validate Log Channel
+            if (settings.MainSettings.LogButtonsAndCommands)
+            {
+                if (!ValidateChannelSetting(settings.MainSettings.ButtonResponseChannel, "Button/Command Log Channel")) allValid = false;
+            }
+            // Validate Player Event Channel
+            if (settings.MainSettings.PostPlayerEvents)
+            {
+                if (!ValidateChannelSetting(settings.MainSettings.PostPlayerEventsChannel, "Player Events Channel")) allValid = false;
+            }
+            // Validate Chat Channel
+            if (settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer)
+            { // If either chat feature is enabled, channel must be valid
+                if (!ValidateChannelSetting(settings.MainSettings.ChatToDiscordChannel, "Chat Discord Channel")) allValid = false;
+            }
+            // Validate Console Channel
+            if (settings.MainSettings.SendConsoleToDiscord)
+            {
+                if (!ValidateChannelSetting(settings.MainSettings.ConsoleToDiscordChannel, "Console Discord Channel")) allValid = false;
+            }
+            // Validate Roles
+            if (settings.MainSettings.RestrictFunctions)
+            {
+                if (!ValidateRoleSetting(settings.MainSettings.DiscordRole, "Discord Role Name(s)/ID(s)")) allValid = false;
+            }
+
+            if (allValid)
+            {
+                log.Info("[VALIDATE] Initial configuration validation complete. All checked settings appear valid.");
+            }
+            else
+            {
+                log.Error("[VALIDATE] Initial configuration validation FAILED. One or more critical settings (Channels/Roles) could not be validated. Please review settings and previous log messages.");
+                // Consider adding a notification mechanism here if desired (e.g., DM to owner, post in a default channel)
+            }
+        }
+
+        /// <summary>
+        /// Validates a channel ID or name setting.
+        /// </summary>
+        /// <returns>True if valid, False otherwise.</returns>
+        // Ensure this is public
+        public bool ValidateChannelSetting(string? channelNameOrId, string settingName)
+        {
+            if (string.IsNullOrWhiteSpace(channelNameOrId))
+            {
+                log.Error($"[VALIDATE] {settingName} is not configured.");
+                return false;
+            }
+
+            if (client == null || client.ConnectionState != ConnectionState.Connected)
+            {
+                log.Warning($"[VALIDATE] Cannot validate setting '{settingName}' ('{channelNameOrId}') - Discord client not connected.");
+                return false; // Cannot validate
+            }
+
+            log.Debug($"[VALIDATE] Validating channel setting '{settingName}' ('{channelNameOrId}')...");
+            bool found = false;
+            // Use a temporary list to avoid issues if Guilds collection changes during iteration
+            var guilds = client?.Guilds.ToList() ?? new List<SocketGuild>();
+            foreach (var guild in guilds)
+            {
+                SocketGuildChannel? channel = null;
+                // Try parsing as ID first
+                if (ulong.TryParse(channelNameOrId, out ulong channelId))
+                {
+                    try
+                    {
+                        channel = guild.GetChannel(channelId);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Debug($"[VALIDATE] Exception checking channel ID {channelId} in guild {guild.Name}: {ex.Message}");
+                    }
+                }
+
+                // If not found by ID, try by name
+                if (channel == null)
+                {
+                    try
+                    {
+                        channel = guild.Channels.FirstOrDefault(c => c.Name.Equals(channelNameOrId, StringComparison.OrdinalIgnoreCase));
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Debug($"[VALIDATE] Exception checking channel name '{channelNameOrId}' in guild {guild.Name}: {ex.Message}");
+                    }
+                }
+
+                if (channel != null)
+                {
+                    log.Debug($"[VALIDATE] Found channel '{channel.Name}' ({channel.Id}) for setting '{settingName}' in Guild '{guild.Name}' ({guild.Id}). Validation successful for this setting.");
+                    found = true;
+                    break; // Found in at least one guild, that's enough
+                }
+            }
+
+            if (!found)
+            {
+                log.Error($"[VALIDATE] FAILED: Could not find channel '{channelNameOrId}' (for setting '{settingName}') in ANY connected guilds. Please check configuration.");
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// Validates a role name or ID setting.
+        /// </summary>
+        /// <returns>True if valid, False otherwise.</returns>
+        // Ensure this is public
+        public bool ValidateRoleSetting(string? roleNameOrId, string settingName)
+        {
+            if (string.IsNullOrWhiteSpace(roleNameOrId))
+            {
+                log.Error($"[VALIDATE] {settingName} is not configured (required because Restrict Functions is enabled).");
+                return false;
+            }
+
+            if (client == null || client.ConnectionState != ConnectionState.Connected)
+            {
+                log.Warning($"[VALIDATE] Cannot validate setting '{settingName}' ('{roleNameOrId}') - Discord client not connected.");
+                return false; // Cannot validate
+            }
+
+            log.Debug($"[VALIDATE] Validating role setting '{settingName}' ('{roleNameOrId}')...");
+            var rolesToFind = roleNameOrId.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(r => r.Trim()).Distinct().ToList();
+            if (!rolesToFind.Any())
+            {
+                log.Debug($"[VALIDATE] No roles specified for setting '{settingName}'. Skipping detailed validation as empty is allowed.");
+                return true; // No roles listed is valid
+            }
+
+            List<string> rolesNotFound = new List<string>(rolesToFind);
+            var guilds = client?.Guilds.ToList() ?? new List<SocketGuild>();
+
+            foreach (var roleIdentifier in rolesToFind)
+            {
+                bool foundCurrentRole = false;
+                foreach (var guild in guilds)
+                {
+                    SocketRole? role = null;
+                    // Try parsing as ID first
+                    if (ulong.TryParse(roleIdentifier, out ulong roleId))
+                    {
+                        try
+                        {
+                            role = guild.GetRole(roleId);
+                        }
+                        catch (Exception ex)
+                        {
+                            log.Debug($"[VALIDATE] Exception checking role ID {roleId} in guild {guild.Name}: {ex.Message}");
+                        }
+                    }
+
+                    // If not found by ID, try by name
+                    if (role == null)
+                    {
+                        try
+                        {
+                            role = guild.Roles.FirstOrDefault(r => r.Name.Equals(roleIdentifier, StringComparison.OrdinalIgnoreCase));
+                        }
+                        catch (Exception ex)
+                        {
+                            log.Debug($"[VALIDATE] Exception checking role name '{roleIdentifier}' in guild {guild.Name}: {ex.Message}");
+                        }
+                    }
+
+                    if (role != null)
+                    {
+                        log.Debug($"[VALIDATE] Found role '{role.Name}' ({role.Id}) matching identifier '{roleIdentifier}' in Guild '{guild.Name}' ({guild.Id}).");
+                        foundCurrentRole = true;
+                        rolesNotFound.Remove(roleIdentifier); // Found it, remove from missing list
+                        break; // Stop checking guilds for *this* role identifier
+                    }
+                }
+                if (!foundCurrentRole)
+                {
+                    log.Warning($"[VALIDATE] Could not find role matching identifier '{roleIdentifier}' in ANY connected guilds.");
+                }
+            }
+
+            if (rolesNotFound.Any())
+            {
+                log.Error($"[VALIDATE] FAILED: Could not find the following role(s) (for setting '{settingName}') in ANY connected guilds: {string.Join(", ", rolesNotFound)}. Please check configuration.");
+                return false;
+            }
+            else
+            {
+                log.Debug($"[VALIDATE] All specified roles for setting '{settingName}' were found in at least one guild. Validation successful for this setting.");
+                return true;
+            }
+        }
+
     }
 }

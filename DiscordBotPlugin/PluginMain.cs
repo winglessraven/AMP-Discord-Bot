@@ -3,6 +3,7 @@ using LocalFileBackupPlugin;
 using ModuleShared;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DiscordBotPlugin
 {
@@ -57,6 +58,8 @@ namespace DiscordBotPlugin
                 hasSimpleUserList.UserJoins += events.UserJoins;
                 hasSimpleUserList.UserLeaves += events.UserLeaves;
             }
+
+            log.Info("Discord Bot Plugin Initialized.");
         }
 
         /// <summary>
@@ -90,6 +93,7 @@ namespace DiscordBotPlugin
                 {
                     try
                     {
+                        log.Info("Attempting Discord connection...");
                         _ = bot.ConnectDiscordAsync(_settings.MainSettings.BotToken);
                         _ = bot.UpdatePresence(null, null, true);
                     }
@@ -99,6 +103,27 @@ namespace DiscordBotPlugin
                         log.Error("Error with the Discord Bot: " + exception.Message);
                     }
                 }
+                else
+                {
+                    log.Error("Bot Token is empty or whitespace, cannot connect.");
+                }
+
+                // Schedule validation to run after a short delay to allow connection attempt
+                // Run validation even if ConnectDiscordAsync throws an immediate error, as the client might still exist.
+                _ = Task.Run(async () => {
+                    await Task.Delay(10000); // Wait 10 seconds for connection attempt
+                                             // Check events as well
+                    if (bot?.client != null && events != null)
+                    { // Check bot AND client AND events
+                        log.Info("Running initial configuration validation...");
+                        // Call the renamed async method
+                        await bot.PerformInitialConfigurationValidationAsync();
+                    }
+                    else
+                    {
+                        log.Warning("Skipping initial configuration validation as Discord client was not initialized or connected.");
+                    }
+                });
             }
         }
 
