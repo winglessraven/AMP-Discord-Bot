@@ -1,6 +1,8 @@
 
 # AMP Discord Bot Plugin
 
+[![Github All Releases](https://img.shields.io/github/downloads/winglessraven/AMP-Discord-Bot/total.svg)]()
+
 A full featured Discord bot plugin for [AMP by Cubecoders](https://cubecoders.com/AMP) that can be used to display the server status in a dynamically updating info panel along with the ability to manage the server directly from Discord. 
 * Use buttons or commands to start/stop/restart/kill/update/manage.
 * Send console commands directly from Discord to your server.
