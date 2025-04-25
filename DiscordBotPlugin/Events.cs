@@ -56,6 +56,13 @@ namespace DiscordBotPlugin
                 return;
             }
 
+            //if name is empty, log and return
+            if (args.User.Name == "")
+            {
+                log.Info("User joined but name is empty. Playtime will not be logged. User ID: " + args.UserID.ToString());
+                return;
+            }
+
             if (helper.CheckIfPlayerJoinedWithinLast10Seconds(infoPanel.playerPlayTimes, args.User.Name))
             {
                 log.Info("Player join event already processed.");
@@ -112,6 +119,13 @@ namespace DiscordBotPlugin
             if (args?.User == null)
             {
                 log.Error("User event argument is null.");
+                return;
+            }
+
+            //if name is empty, log and return
+            if (args.User.Name == "")
+            {
+                log.Info("User left but name is empty. Playtime will not be logged. User ID: " + args.UserID.ToString());
                 return;
             }
 

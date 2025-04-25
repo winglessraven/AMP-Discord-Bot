@@ -68,6 +68,12 @@ namespace DiscordBotPlugin
 
             Dictionary<string, TimeSpan> playtime = new Dictionary<string, TimeSpan>(settings.MainSettings.PlayTime);
 
+            //remove any blank names
+            foreach (var key in playtime.Keys.Where(k => k == "").ToList())
+            {
+                playtime.Remove(key);
+            }
+
             foreach (PlayerPlayTime player in infoPanel.playerPlayTimes)
             {
                 TimeSpan currentSession = DateTime.Now - player.JoinTime;
