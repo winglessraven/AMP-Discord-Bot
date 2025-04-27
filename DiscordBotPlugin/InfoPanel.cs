@@ -126,6 +126,10 @@ namespace DiscordBotPlugin
             if (settings?.MainSettings?.ShowOnlinePlayers == true)
             {
                 List<string> onlinePlayerNames = hasSimpleUserList.Users.Where(u => !string.IsNullOrEmpty(u.Name)).Select(u => u.Name).ToList();
+
+                //sort alphabetically
+                onlinePlayerNames.Sort(StringComparer.OrdinalIgnoreCase);
+
                 if (onlinePlayerNames.Count > 0)
                 {
                     embed.AddField("Online Players", string.Join(Environment.NewLine, onlinePlayerNames), false);
