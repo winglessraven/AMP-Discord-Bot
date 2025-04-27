@@ -460,7 +460,7 @@ namespace DiscordBotPlugin
                         case "info":
                             bool buttonless = command.Data.Options.First().Options.Count > 0 && Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
                             await infoPanel.GetServerInfo(false, command, buttonless);
-                            await command.RespondAsync("Info panel created", ephemeral: true);
+                            await command.FollowupAsync("Info panel created", ephemeral: true);
                             break;
                         case "start-server":
                             application.Start();
