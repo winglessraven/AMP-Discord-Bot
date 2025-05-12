@@ -304,7 +304,6 @@ namespace DiscordBotPlugin
                     statusColour = Color.Red;
                 }
 
-                var leaveColor = helper.GetColour("PlayerLeave", settings.ColourSettings.ServerPlayerLeaveEventColour);
                 var embed = new EmbedBuilder
                 {
                     Title = "Server Event",
