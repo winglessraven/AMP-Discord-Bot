@@ -276,9 +276,46 @@ namespace DiscordBotPlugin
         /// <summary>
         /// Updates the bot's presence when the application state changes.
         /// </summary>
-        public void ApplicationStateChange(object sender, ApplicationStateChangeEventArgs args)
+        public async void ApplicationStateChange(object sender, ApplicationStateChangeEventArgs args)
         {
             _ = bot.UpdatePresence(sender, args);
+
+            if (!settings.MainSettings.PostStatusEvents)
+                return;
+            foreach (var (socketGuild, eventChannel) in from SocketGuild socketGuild in bot.client.Guilds
+                                                        let eventChannel = bot.GetEventChannel(socketGuild.Id, settings.MainSettings.PostStatusEventsChannel)
+                                                        select (socketGuild, eventChannel))
+            {
+                if (eventChannel == null || !bot.CanBotSendMessageInChannel(bot.client, eventChannel.Id))
+                {
+                    log.Error($"No permission to post to channel: {eventChannel?.Name ?? "Unknown"}.");
+                    return;
+                }
+
+                Color statusColour = Color.Orange;
+
+                if (application.State == ApplicationState.Ready)
+                {
+                    statusColour = Color.Green;
+                }
+
+                if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
+                {
+                    statusColour = Color.Red;
+                }
+
+                var leaveColor = helper.GetColour("PlayerLeave", settings.ColourSettings.ServerPlayerLeaveEventColour);
+                var embed = new EmbedBuilder
+                {
+                    Title = "Server Event",
+                    Description = $"{application.ApplicationName} status change : " + application.State.ToString(),
+                    ThumbnailUrl = settings.MainSettings.GameImageURL,
+                    Color = statusColour,
+                    Footer = new EmbedFooterBuilder { Text = settings.MainSettings.BotTagline },
+                    Timestamp = DateTimeOffset.Now
+                };
+                await bot.client.GetGuild(socketGuild.Id).GetTextChannel(eventChannel.Id).SendMessageAsync(embed: embed.Build());
+            }
         }
 
         /// <summary>

@@ -64,6 +64,12 @@ namespace DiscordBotPlugin
             [WebSetting("Post Join and Leave Messages Channel (Name OR ID)", "Channel name or ID to post player join and leave events", false, Subcategory: "Logging:output:4")]
             public string PostPlayerEventsChannel = "";
 
+            [WebSetting("Post Status Change Messages", "Post application status change events to a Discord channel", false, Subcategory: "Logging:output:4")]
+            public bool PostStatusEvents = false;
+
+            [WebSetting("Post Status Change Messages Channel (Name OR ID)", "Channel name or ID to post application status change events", false, Subcategory: "Logging:output:4")]
+            public string PostStatusEventsChannel = "";
+
             [WebSetting("Base Management URL", "Address used to manage instances, should be in the format of amp.domain.com or your external IP if you do not use a domain", false, Subcategory: "Misc:more_vert:7")]
             public string ManagementURL = "";
 
