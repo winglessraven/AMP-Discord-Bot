@@ -330,6 +330,7 @@ namespace DiscordBotPlugin
         public async Task OnButtonPress(SocketMessageComponent arg)
         {
             log.Debug($"Button pressed: {arg.Data.CustomId}");
+            await arg.DeferAsync(ephemeral: true);
 
             if (arg.User is not SocketGuildUser user)
             {
@@ -340,7 +341,7 @@ namespace DiscordBotPlugin
             bool hasServerPermission = bot?.HasServerPermission(user) ?? false;
             if (!hasServerPermission)
             {
-                await arg.DeferAsync();
+                await arg.FollowupAsync("You do not have permission to perform this action.", ephemeral: true);
                 return;
             }
 
