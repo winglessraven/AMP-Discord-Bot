@@ -779,7 +779,6 @@ namespace DiscordBotPlugin
         public async Task ButtonResponse(string Command, SocketMessageComponent arg)
         {
             log.Debug($"[BTN_LOG] Preparing button log response for action '{Command}' by user {arg.User.Username} (ButtonId: {arg.Data.CustomId})");
-            await arg.DeferAsync(ephemeral: true);
 
             // Only log if option is enabled
             if (settings.MainSettings.LogButtonsAndCommands)
