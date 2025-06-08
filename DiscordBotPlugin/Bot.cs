@@ -859,9 +859,10 @@ namespace DiscordBotPlugin
                     log.Error("No permission to post to channel: " + logChannel);
                     return;
                 }
-
                 await client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             }
+
+            await arg.FollowupAsync($"`{Command}` command has been processed.", ephemeral: true);
         }
 
         /// <summary>
