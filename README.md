@@ -44,6 +44,18 @@ Web Panel:
 
 *Note: If `Remove Bot Name` is enabled in settings then the commands will exclude the name.*
 
+# Message Command Reference (self explanitory)
+```
+!start-server
+!stop-server
+!restart-server
+!kill-server
+!update-server
+!full-playtime-list
+!take-backup
+!remove-all-playtime
+```
+
 # Configuration Steps
 
 ## Install Script
