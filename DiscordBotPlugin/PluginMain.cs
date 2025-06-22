@@ -37,7 +37,7 @@ namespace DiscordBotPlugin
 
             // Initialize some dependencies first
             helper = new Helpers(_settings, this.log, this.application, config, platform, null); // Temporary null for infoPanel
-            commands = new Commands(this.application, _settings, this.log, null, AMPInstanceInfo, null); // Temporary null for events and backupprovider
+            commands = new Commands(this.application, _settings, this.log, null, AMPInstanceInfo, null, config); // Temporary null for events and backupprovider
             infoPanel = new InfoPanel(this.application, _settings, helper, AMPInstanceInfo, this.log, config, null, commands); // Temporary null for bot
             bot = new Bot(_settings, AMPInstanceInfo, this.application, this.log, null, helper, infoPanel, commands); // Temporary null for events
 

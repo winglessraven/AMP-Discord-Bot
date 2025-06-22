@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using LocalFileBackupPlugin;
 using ModuleShared;
 using System;
+using System.Configuration;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -18,8 +19,9 @@ namespace DiscordBotPlugin
         private BackupProvider backupProvider;
         private IAMPInstanceInfo aMPInstanceInfo;
         private Events events;
+        private readonly IConfigSerializer config;
 
-        public Commands(IApplicationWrapper application, Settings settings, ILogger log, BackupProvider backupProvider, IAMPInstanceInfo aMPInstanceInfo, Events events)
+        public Commands(IApplicationWrapper application, Settings settings, ILogger log, BackupProvider backupProvider, IAMPInstanceInfo aMPInstanceInfo, Events events, IConfigSerializer config)
         {
             this.application = application;
             this.settings = settings;
@@ -27,6 +29,7 @@ namespace DiscordBotPlugin
             this.backupProvider = backupProvider;
             this.aMPInstanceInfo = aMPInstanceInfo;
             this.events = events;
+            this.config = config;
         }
 
         public void SetEvents(Events events)
@@ -188,6 +191,26 @@ namespace DiscordBotPlugin
 
             // Send a private message to the user with the link to the management panel
             await arg.User.SendMessageAsync("Link to management panel:", components: builder.Build());
+        }
+
+        public void RemovePlaytime(bool RemoveAll, string PlayerName = "")
+        {
+            if(RemoveAll)
+            {
+                //remove all playtime for all players
+                settings.MainSettings.PlayTime.Clear();
+                config.Save(settings);
+                log.Info("Removed playtime for all players.");
+            }
+            else
+            {
+                if (settings.MainSettings.PlayTime.ContainsKey(PlayerName))
+                {
+                    settings.MainSettings.PlayTime.Remove(PlayerName);
+                    config.Save(settings);
+                    log.Info($"Removed playtime for player: {PlayerName}");
+                }
+            }
         }
     }
 
