@@ -45,6 +45,8 @@ Web Panel:
 *Note: If `Remove Bot Name` is enabled in settings then the commands will exclude the name.*
 
 # Message Command Reference (self explanitory)
+> [!WARNING]
+> If you have more than one instance of this plugin in your server all will respond to these message commands!
 ```
 !start-server
 !stop-server
