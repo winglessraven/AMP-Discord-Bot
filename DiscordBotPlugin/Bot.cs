@@ -1,14 +1,15 @@
-﻿using Discord.WebSocket;
-using Discord;
+﻿using Discord;
+using Discord.WebSocket;
 using ModuleShared;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
+using System.Threading.Tasks;
+using static System.Windows.Forms.Design.AxImporter;
 
 namespace DiscordBotPlugin
 {
@@ -282,6 +283,12 @@ namespace DiscordBotPlugin
                 commandList.Add(new SlashCommandBuilder()
                     .WithName("take-backup")
                     .WithDescription("Take a backup of the instance"));
+
+                commandList.Add(new SlashCommandBuilder()
+                    .WithName("remove-playtime")
+                    .WithDescription("Remove Playtime (all or specific player)")
+                    .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
+                    .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
             }
             else
             {
@@ -343,7 +350,13 @@ namespace DiscordBotPlugin
                     .AddOption(new SlashCommandOptionBuilder()
                         .WithName("take-backup")
                         .WithDescription("Take a backup of the instance")
-                        .WithType(ApplicationCommandOptionType.SubCommand));
+                        .WithType(ApplicationCommandOptionType.SubCommand))
+                    .AddOption(new SlashCommandOptionBuilder()
+                        .WithName("remove-playtime")
+                        .WithDescription("Remove Playtime (all or specific player)")
+                        .WithType(ApplicationCommandOptionType.SubCommand)
+                        .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
+                        .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
 
                     // Add the base command to the command list
                     commandList.Add(baseCommand);
@@ -542,6 +555,15 @@ namespace DiscordBotPlugin
                             await CommandResponse("Backup Server", command);
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
+                        case "remove-playtime":
+                            var subCommand = command.Data.Options.FirstOrDefault();
+                            var subOptions = subCommand?.Options;
+                            string playerToRemove = subOptions?.FirstOrDefault(x => x.Name == "playername")?.Value?.ToString();
+                            bool all = subOptions?.FirstOrDefault(x => x.Name == "all")?.Value is bool b && b;
+                            log.Debug($"[CMD] Remove playtime command received. All: {all}, Player: {playerToRemove}");
+                            commands.RemovePlaytime(all, playerToRemove);
+                            await command.FollowupAsync($"Playtime removal command processed. All: {all}, Player: {playerToRemove}", ephemeral: true);
+                            break;
                     }
                     log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                 }
@@ -670,6 +692,15 @@ namespace DiscordBotPlugin
                             await CommandResponse("Backup Server", command);
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
+                        case "remove-playtime":
+                            var options = command.Data.Options;
+                            string playerToRemove = options.FirstOrDefault(x => x.Name == "playername")?.Value?.ToString();
+                            bool all = options.FirstOrDefault(x => x.Name == "all")?.Value is bool b2 && b2;
+                            log.Debug($"[CMD] Remove playtime command received. All: {all}, Player: {playerToRemove}");
+                            commands.RemovePlaytime(all, playerToRemove);
+                            await command.FollowupAsync($"Playtime removal command processed. All: {all}, Player: {playerToRemove}", ephemeral: true);
+                            break;
+
                     }
                     log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
                 }
