@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using ModuleShared;
 using Newtonsoft.Json;
@@ -389,8 +390,91 @@ namespace DiscordBotPlugin
         /// Handles incoming socket messages.
         /// </summary>
         /// <param name="message">The incoming socket message.</param>
-        public async Task MessageHandler(SocketMessage message)
+        public async Task MessageHandler(SocketMessage messageParam)
         {
+            if (!(messageParam is SocketUserMessage message)) return;
+            if (message.Source != MessageSource.User) return;
+
+            int argPos = 0;
+            if (!message.HasCharPrefix('!', ref argPos)) return;
+
+            var context = new SocketCommandContext(client, message);
+            string command = message.Content.Substring(argPos).ToLower();
+
+            bool hasServerPermission = false;
+
+            log.Debug($"[CMD] Performing permission check for user {message.Author.Username} (ID: {message.Author.Id}) for command '{command}'. Required Role(s): '{settings.MainSettings.DiscordRole}', Restrict Functions: {settings.MainSettings.RestrictFunctions}");
+
+            if (message.Author is SocketGuildUser user)
+            {
+                hasServerPermission = HasServerPermission(user);
+                log.Debug($"[CMD]] Permission check result for user {message.Author.Username}: {hasServerPermission}");
+            }
+
+            if (hasServerPermission)
+            {
+                switch (command)
+                {
+                    case "start-server":
+                        application.Start();
+                        break;
+                    case "stop-server":
+                        application.Stop();
+                        break;
+                    case "restart-server":
+                        application.Restart();
+                        break;
+                    case "kill-server":
+                        application.Kill();
+                        break;
+                    case "update-server":
+                        application.Update();
+                        break;
+                    case "full-playtime-list":
+                        string playTime = helper.GetPlayTimeLeaderBoard(1000, false, null, true, false);
+                        if (playTime.Length > 2000)
+                        {
+                            string path = Path.Combine(application.BaseDirectory, "full-playtime-list.txt");
+                            try
+                            {
+                                playTime = playTime.Replace("```", "");
+                                using (FileStream fileStream = File.Create(path))
+                                {
+                                    byte[] text = new UTF8Encoding(true).GetBytes(playTime);
+                                    await fileStream.WriteAsync(text, 0, text.Length);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                log.Error("Error creating file: " + ex.Message);
+                            }
+
+                            await context.Channel.SendFileAsync(path);
+
+                            try
+                            {
+                                File.Delete(path);
+                            }
+                            catch (Exception ex)
+                            {
+                                log.Error("Error deleting file: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            await context.Channel.SendMessageAsync(playTime);
+                        }
+                        break;
+                    case "take-backup":
+                        commands.BackupServer((SocketGuildUser)message.Author);
+                        break;
+                    case "remove-all-playtime":
+                        commands.RemovePlaytime(true);
+                        break;
+                }
+            }
+
+
             // If sending Discord chat to server is disabled or the message is from a bot, return and do nothing further
             if (!settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot)
                 return;
