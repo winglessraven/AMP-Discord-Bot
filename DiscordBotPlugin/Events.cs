@@ -209,6 +209,14 @@ namespace DiscordBotPlugin
                     if (bot.client == null || bot.client.ConnectionState == ConnectionState.Disconnected)
                     {
                         _ = bot.ConnectDiscordAsync(settings.MainSettings.BotToken);
+
+                        log.MessageLogged += Log_MessageLogged;
+                        application.StateChanged += ApplicationStateChange;
+                        if (application is IHasSimpleUserList hasSimpleUserList)
+                        {
+                            hasSimpleUserList.UserJoins += UserJoins;
+                            hasSimpleUserList.UserLeaves += UserLeaves;
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -234,6 +242,14 @@ namespace DiscordBotPlugin
                     {
                         log.Error($"Error logging out from Discord: {exception.Message}");
                     }
+                }
+
+                log.MessageLogged -= Log_MessageLogged;
+                application.StateChanged -= ApplicationStateChange;
+                if (application is IHasSimpleUserList hasSimpleUserList)
+                {
+                    hasSimpleUserList.UserJoins -= UserJoins;
+                    hasSimpleUserList.UserLeaves -= UserLeaves;
                 }
             }
         }

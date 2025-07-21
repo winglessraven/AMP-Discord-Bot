@@ -482,18 +482,19 @@ namespace DiscordBotPlugin
                         }
                     }
                 }
-
-                // If sending Discord chat to server is disabled or the message is from a bot, return and do nothing further
-                if (!settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot)
-                    return;
-
-                // Check if the message is in the specified chat-to-Discord channel
-                if (message.Channel.Name.Equals(settings.MainSettings.ChatToDiscordChannel) || message.Channel.Id.ToString().Equals(settings.MainSettings.ChatToDiscordChannel))
-                {
-                    // Send the chat command to the server
-                    await commands.SendChatCommand(message.Author.Username, message.CleanContent);
-                }
             }
+
+            // If sending Discord chat to server is disabled or the message is from a bot, return and do nothing further
+            if (!settings.MainSettings.SendDiscordChatToServer || message.Author.IsBot)
+                return;
+
+            // Check if the message is in the specified chat-to-Discord channel
+            if (message.Channel.Name.Equals(settings.MainSettings.ChatToDiscordChannel) || message.Channel.Id.ToString().Equals(settings.MainSettings.ChatToDiscordChannel))
+            {
+                // Send the chat command to the server
+                await commands.SendChatCommand(message.Author.Username, message.CleanContent);
+            }
+
         }
 
         /// <summary>

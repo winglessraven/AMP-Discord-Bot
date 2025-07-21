@@ -51,12 +51,16 @@ namespace DiscordBotPlugin
             bot.SetEvents(events);          // Inject events
 
             _settings.SettingModified += events.Settings_SettingModified;
-            log.MessageLogged += events.Log_MessageLogged;
-            application.StateChanged += events.ApplicationStateChange;
-            if (application is IHasSimpleUserList hasSimpleUserList)
+
+            if (_settings.MainSettings.BotActive)
             {
-                hasSimpleUserList.UserJoins += events.UserJoins;
-                hasSimpleUserList.UserLeaves += events.UserLeaves;
+                log.MessageLogged += events.Log_MessageLogged;
+                application.StateChanged += events.ApplicationStateChange;
+                if (application is IHasSimpleUserList hasSimpleUserList)
+                {
+                    hasSimpleUserList.UserJoins += events.UserJoins;
+                    hasSimpleUserList.UserLeaves += events.UserLeaves;
+                }
             }
 
             log.Info("Discord Bot Plugin Initialized.");
@@ -110,7 +114,8 @@ namespace DiscordBotPlugin
 
                 // Schedule validation to run after a short delay to allow connection attempt
                 // Run validation even if ConnectDiscordAsync throws an immediate error, as the client might still exist.
-                _ = Task.Run(async () => {
+                _ = Task.Run(async () =>
+                {
                     await Task.Delay(10000); // Wait 10 seconds for connection attempt
                                              // Check events as well
                     if (bot?.client != null && events != null)
