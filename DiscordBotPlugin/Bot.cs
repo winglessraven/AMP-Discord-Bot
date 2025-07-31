@@ -505,6 +505,29 @@ namespace DiscordBotPlugin
         {
             try
             {
+                // Define bot commands
+                var myBotCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                if (settings.MainSettings.RemoveBotName)
+                {
+                    myBotCommands.UnionWith(new[] { "info", "start-server", "stop-server", "restart-server",
+                                          "kill-server", "update-server", "show-playtime", "console",
+                                          "full-playtime-list", "take-backup", "remove-playtime" });
+                }
+                else if (client?.CurrentUser != null)
+                {
+                    string botName = client.CurrentUser.Username.ToLower();
+                    botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
+                    myBotCommands.Add(botName);
+                }
+
+                // Check if this command is for this bot
+                if (!myBotCommands.Contains(command.Data.Name))
+                {
+                    log.Debug($"[CMD] Ignoring command '{command.Data.Name}' - not a command for this bot");
+                    return;
+                }
+
                 var startTime = DateTime.UtcNow;
                 log.Info($"[CMD] Received slash command interaction: User={command.User.Username}({command.User.Id}), Guild={command.GuildId}, Channel={command.ChannelId}, CommandId={command.CommandId}, CommandName={command.Data.Name}, Options={JsonConvert.SerializeObject(command.Data.Options)}");
 
