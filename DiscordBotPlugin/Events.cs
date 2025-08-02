@@ -7,6 +7,7 @@ using static DiscordBotPlugin.PluginMain;
 using System.Text.RegularExpressions;
 using LocalFileBackupPlugin;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace DiscordBotPlugin
 {
@@ -274,7 +275,35 @@ namespace DiscordBotPlugin
 
             if ((e.Level == LogLevels.Console.ToString() || e.Level == LogLevels.Chat.ToString()) && settings.MainSettings.SendConsoleToDiscord && !string.IsNullOrEmpty(settings.MainSettings.ConsoleToDiscordChannel))
             {
-                bot.consoleOutput.Add(cleanMessage);
+                bool isExcluded = false;
+
+                foreach (var pattern in settings.MainSettings.ExcludeConsoleOutput)
+                {
+                    if (pattern.Contains("*"))
+                    {
+                        // Convert wildcard pattern to regex
+                        var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*") + "$";
+                        if (Regex.IsMatch(cleanMessage, regexPattern, RegexOptions.IgnoreCase))
+                        {
+                            isExcluded = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        // Exact match
+                        if (string.Equals(cleanMessage, pattern, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isExcluded = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!isExcluded)
+                {
+                    bot.consoleOutput.Add(cleanMessage);
+                }
             }
 
             if (e.Level == LogLevels.Console.ToString() && settings.GameSpecificSettings.ValheimJoinCode)

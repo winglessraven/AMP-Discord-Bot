@@ -138,6 +138,9 @@ namespace DiscordBotPlugin
             [WebSetting("Console Discord Channel", "Discord channel name (or ID) to send console output to (if enabled)", false, Subcategory: "Logging:output:4")]
             public string ConsoleToDiscordChannel = "";
 
+            [WebSetting("Exclude Console Output", "Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. *message to ignore*", false, Subcategory: "Logging:output:4")]
+            public List<string> ExcludeConsoleOutput = new List<string>();
+
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false, Subcategory: "Discord Config:settings:1")]
             public bool DiscordDebugMode = false;
 
