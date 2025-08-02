@@ -147,6 +147,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Send Chat from Discord to Server|Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)|
 |Send Console to Discord|Send console output to a Discord channel|
 |Console Discord Channel|Discord channel name to send console output to (if enabled)|
+|Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
 |Enable Web Panel|Enable the web panel. This will create a html file in a similar format to the Discord info panel for website embeds. Additional steps are required to map the html file to make it accessible. See the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Configure-the-Web-Panel)|
 
 ## AMP Discord Bot Colours
