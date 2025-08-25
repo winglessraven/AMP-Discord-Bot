@@ -424,21 +424,57 @@ namespace DiscordBotPlugin
                         switch (command)
                         {
                             case "start-server":
+                                if(!settings.CommandSettings.EnableStartServer)
+                                {
+                                    log.Debug($"[CMD] Command 'start-server' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'start-server' command is currently disabled.");
+                                    break;
+                                }
                                 application.Start();
                                 break;
                             case "stop-server":
+                                if(!settings.CommandSettings.EnableStopServer)
+                                {
+                                    log.Debug($"[CMD] Command 'stop-server' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'stop-server' command is currently disabled.");
+                                    break;
+                                }
                                 application.Stop();
                                 break;
                             case "restart-server":
+                                if(!settings.CommandSettings.EnableRestartServer)
+                                {
+                                    log.Debug($"[CMD] Command 'restart-server' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'restart-server' command is currently disabled.");
+                                    break;
+                                }
                                 application.Restart();
                                 break;
                             case "kill-server":
+                                if(!settings.CommandSettings.EnableKillServer)
+                                {
+                                    log.Debug($"[CMD] Command 'kill-server' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'kill-server' command is currently disabled.");
+                                    break;
+                                }
                                 application.Kill();
                                 break;
                             case "update-server":
+                                if(!settings.CommandSettings.EnableUpdateServer)
+                                {
+                                    log.Debug($"[CMD] Command 'update-server' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'update-server' command is currently disabled.");
+                                    break;
+                                }
                                 application.Update();
                                 break;
                             case "full-playtime-list":
+                                if(!settings.CommandSettings.EnableFullPlaytimeList)
+                                {
+                                    log.Debug($"[CMD] Command 'full-playtime-list' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'full-playtime-list' command is currently disabled.");
+                                    break;
+                                }
                                 string playTime = helper.GetPlayTimeLeaderBoard(1000, false, null, true, false);
                                 if (playTime.Length > 2000)
                                 {
@@ -474,9 +510,21 @@ namespace DiscordBotPlugin
                                 }
                                 break;
                             case "take-backup":
+                                if(!settings.CommandSettings.EnableTakeBackup)
+                                {
+                                    log.Debug($"[CMD] Command 'take-backup' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'take-backup' command is currently disabled.");
+                                    break;
+                                }
                                 commands.BackupServer((SocketGuildUser)message.Author);
                                 break;
                             case "remove-all-playtime":
+                                if(!settings.CommandSettings.EnableRemovePlaytime)
+                                {
+                                    log.Debug($"[CMD] Command 'remove-playtime' is disabled in settings.");
+                                    await context.Channel.SendMessageAsync("The 'remove-playtime' command is currently disabled.");
+                                    break;
+                                }
                                 commands.RemovePlaytime(true);
                                 break;
                         }
@@ -548,20 +596,29 @@ namespace DiscordBotPlugin
                     // Leaderboard permissionless
                     if (command.Data.Options != null && command.Data.Options.First().Name.Equals("show-playtime"))
                     {
-                        log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
-                        if (command.Data.Options.First().Options.Count > 0)
+                        if(settings.CommandSettings.EnableShowPlaytime)
                         {
-                            string playerName = command.Data.Options.First().Options.First().Value.ToString();
-                            string playTime = helper.GetPlayTimeLeaderBoard(1, true, playerName, false, false);
-                            await command.FollowupAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                            log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
+                            if (command.Data.Options.First().Options.Count > 0)
+                            {
+                                string playerName = command.Data.Options.First().Options.First().Value.ToString();
+                                string playTime = helper.GetPlayTimeLeaderBoard(1, true, playerName, false, false);
+                                await command.FollowupAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                            }
+                            else
+                            {
+                                await ShowPlayerPlayTime(command);
+                                await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
+                            }
+                            log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
+                            return;
                         }
                         else
                         {
-                            await ShowPlayerPlayTime(command);
-                            await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
+                            log.Debug($"[CMD] Command 'show-playtime' is disabled in settings.");
+                            await command.FollowupAsync("The 'show-playtime' command is currently disabled.", ephemeral: true);
+                            return;
                         }
-                        log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
-                        return;
                     }
 
                     // Initialize bool for permission check
@@ -588,42 +645,90 @@ namespace DiscordBotPlugin
                     switch (command.Data.Options.First().Name)
                     {
                         case "info":
+                            if(!settings.CommandSettings.EnableInfo)
+                            {
+                                log.Debug($"[CMD] Command 'info' is disabled in settings.");
+                                await command.FollowupAsync("The 'info' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             bool buttonless = command.Data.Options.First().Options.Count > 0 && Convert.ToBoolean(command.Data.Options.First().Options.First().Value.ToString());
                             await infoPanel.GetServerInfo(false, command, buttonless);
                             await command.FollowupAsync("Info panel created", ephemeral: true);
                             break;
                         case "start-server":
+                            if(!settings.CommandSettings.EnableStartServer)
+                            {
+                                log.Debug($"[CMD] Command 'start-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'start-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Start();
                             await CommandResponse("Start Server", command);
                             await command.FollowupAsync("Start command sent to the application", ephemeral: true);
                             break;
                         case "stop-server":
+                            if(!settings.CommandSettings.EnableStopServer)
+                            {
+                                log.Debug($"[CMD] Command 'stop-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'stop-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Stop();
                             await CommandResponse("Stop Server", command);
                             await command.FollowupAsync("Stop command sent to the application", ephemeral: true);
                             break;
                         case "restart-server":
+                            if(!settings.CommandSettings.EnableRestartServer)
+                            {
+                                log.Debug($"[CMD] Command 'restart-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'restart-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Restart();
                             await CommandResponse("Restart Server", command);
                             await command.FollowupAsync("Restart command sent to the application", ephemeral: true);
                             break;
                         case "kill-server":
+                            if(!settings.CommandSettings.EnableKillServer)
+                            {
+                                log.Debug($"[CMD] Command 'kill-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'kill-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Kill();
                             await CommandResponse("Kill Server", command);
                             await command.FollowupAsync("Kill command sent to the application", ephemeral: true);
                             break;
                         case "update-server":
+                            if(!settings.CommandSettings.EnableUpdateServer)
+                            {
+                                log.Debug($"[CMD] Command 'update-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'update-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Update();
                             await CommandResponse("Update Server", command);
                             await command.FollowupAsync("Update command sent to the application", ephemeral: true);
                             break;
                         case "console":
+                            if(!settings.CommandSettings.EnableConsole)
+                            {
+                                log.Debug($"[CMD] Command 'console' is disabled in settings.");
+                                await command.FollowupAsync("The 'console' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             await commands.SendConsoleCommand(command);
                             string consoleCommand = command.Data.Options.First().Options.First().Value.ToString();
                             await CommandResponse("`" + consoleCommand + "` console ", command);
                             await command.FollowupAsync("Command sent to the server: `" + consoleCommand + "`", ephemeral: true);
                             break;
                         case "full-playtime-list":
+                            if(!settings.CommandSettings.EnableFullPlaytimeList)
+                            {
+                                log.Debug($"[CMD] Command 'full-playtime-list' is disabled in settings.");
+                                await command.FollowupAsync("The 'full-playtime-list' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             if (command.Data.Options.First().Options.Count > 0)
                             {
                                 string playerName = command.Data.Options.First().Options.First().Value.ToString();
@@ -668,11 +773,23 @@ namespace DiscordBotPlugin
                             }
                             break;
                         case "take-backup":
+                            if(!settings.CommandSettings.EnableTakeBackup)
+                            {
+                                log.Debug($"[CMD] Command 'take-backup' is disabled in settings.");
+                                await command.FollowupAsync("The 'take-backup' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             commands.BackupServer((SocketGuildUser)command.User);
                             await CommandResponse("Backup Server", command);
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
                         case "remove-playtime":
+                            if(!settings.CommandSettings.EnableRemovePlaytime)
+                            {
+                                log.Debug($"[CMD] Command 'remove-playtime' is disabled in settings.");
+                                await command.FollowupAsync("The 'remove-playtime' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             var subCommand = command.Data.Options.FirstOrDefault();
                             var subOptions = subCommand?.Options;
                             string playerToRemove = subOptions?.FirstOrDefault(x => x.Name == "playername")?.Value?.ToString();
@@ -690,20 +807,29 @@ namespace DiscordBotPlugin
                     // Leaderboard permissionless
                     if (command.Data.Name.Equals("show-playtime"))
                     {
-                        log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
-                        if (command.Data.Options.Count > 0)
+                        if(settings.CommandSettings.EnableShowPlaytime)
                         {
-                            string playerName = command.Data.Options.First().Value.ToString();
-                            string playTime = helper.GetPlayTimeLeaderBoard(1, true, playerName, false, false);
-                            await command.FollowupAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                            log.Debug($"[CMD] Permission not required, start processing interaction for command '{commandName}'");
+                            if (command.Data.Options.Count > 0)
+                            {
+                                string playerName = command.Data.Options.First().Value.ToString();
+                                string playTime = helper.GetPlayTimeLeaderBoard(1, true, playerName, false, false);
+                                await command.FollowupAsync("Playtime for " + playerName + ": " + playTime, ephemeral: true);
+                            }
+                            else
+                            {
+                                await ShowPlayerPlayTime(command);
+                                await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
+                            }
+                            log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
+                            return;
                         }
                         else
                         {
-                            await ShowPlayerPlayTime(command);
-                            await command.FollowupAsync("Playtime leaderboard displayed", ephemeral: true);
+                            log.Debug($"[CMD] Command 'show-playtime' is disabled in settings.");
+                            await command.FollowupAsync("The 'show-playtime' command is currently disabled.", ephemeral: true);
+                            return;
                         }
-                        log.Info($"[CMD] Completed processing interaction for command '{commandName}'");
-                        return;
                     }
 
                     // Initialize bool for permission check
@@ -728,41 +854,89 @@ namespace DiscordBotPlugin
                     switch (command.Data.Name)
                     {
                         case "info":
+                            if(!settings.CommandSettings.EnableInfo)
+                            {
+                                log.Debug($"[CMD] Command 'info' is disabled in settings.");
+                                await command.FollowupAsync("The 'info' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             bool buttonless = command.Data.Options.Count > 0 && Convert.ToBoolean(command.Data.Options.First().Value.ToString());
                             await infoPanel.GetServerInfo(false, command, buttonless);
                             await command.FollowupAsync("Info panel created", ephemeral: true);
                             break;
                         case "start-server":
+                            if(!settings.CommandSettings.EnableStartServer)
+                            {
+                                log.Debug($"[CMD] Command 'start-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'start-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Start();
                             await CommandResponse("Start Server", command);
                             await command.FollowupAsync("Start command sent to the application", ephemeral: true);
                             break;
                         case "stop-server":
+                            if(!settings.CommandSettings.EnableStopServer)
+                            {
+                                log.Debug($"[CMD] Command 'stop-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'stop-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Stop();
                             await CommandResponse("Stop Server", command);
                             await command.FollowupAsync("Stop command sent to the application", ephemeral: true);
                             break;
                         case "restart-server":
+                            if(!settings.CommandSettings.EnableRestartServer)
+                            {
+                                log.Debug($"[CMD] Command 'restart-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'restart-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Restart();
                             await CommandResponse("Restart Server", command);
                             await command.FollowupAsync("Restart command sent to the application", ephemeral: true);
                             break;
                         case "kill-server":
+                            if(!settings.CommandSettings.EnableKillServer)
+                            {
+                                log.Debug($"[CMD] Command 'kill-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'kill-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Kill();
                             await CommandResponse("Kill Server", command);
                             await command.FollowupAsync("Kill command sent to the application", ephemeral: true);
                             break;
                         case "update-server":
+                            if(!settings.CommandSettings.EnableUpdateServer)
+                            {
+                                log.Debug($"[CMD] Command 'update-server' is disabled in settings.");
+                                await command.FollowupAsync("The 'update-server' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             application.Update();
                             await CommandResponse("Update Server", command);
                             await command.FollowupAsync("Update command sent to the application", ephemeral: true);
                             break;
                         case "console":
+                            if(!settings.CommandSettings.EnableConsole)
+                            {
+                                log.Debug($"[CMD] Command 'console' is disabled in settings.");
+                                await command.FollowupAsync("The 'console' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             await commands.SendConsoleCommand(command);
                             await CommandResponse("`" + command.Data.Options.First().Value.ToString() + "` console ", command);
                             await command.FollowupAsync("Command sent to the server: `" + command.Data.Options.First().Value.ToString() + "`", ephemeral: true);
                             break;
                         case "full-playtime-list":
+                            if(!settings.CommandSettings.EnableFullPlaytimeList)
+                            {
+                                log.Debug($"[CMD] Command 'full-playtime-list' is disabled in settings.");
+                                await command.FollowupAsync("The 'full-playtime-list' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             if (command.Data.Options.Count > 0)
                             {
                                 string playerName = command.Data.Options.First().Value.ToString();
@@ -805,11 +979,23 @@ namespace DiscordBotPlugin
                             }
                             break;
                         case "take-backup":
+                            if(!settings.CommandSettings.EnableTakeBackup)
+                            {
+                                log.Debug($"[CMD] Command 'take-backup' is disabled in settings.");
+                                await command.FollowupAsync("The 'take-backup' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             commands.BackupServer((SocketGuildUser)command.User);
                             await CommandResponse("Backup Server", command);
                             await command.FollowupAsync("Backup command sent to the panel", ephemeral: true);
                             break;
                         case "remove-playtime":
+                            if(!settings.CommandSettings.EnableRemovePlaytime)
+                            {
+                                log.Debug($"[CMD] Command 'remove-playtime' is disabled in settings.");
+                                await command.FollowupAsync("The 'remove-playtime' command is currently disabled.", ephemeral: true);
+                                break;
+                            }
                             var options = command.Data.Options;
                             string playerToRemove = options.FirstOrDefault(x => x.Name == "playername")?.Value?.ToString();
                             bool all = options.FirstOrDefault(x => x.Name == "all")?.Value is bool b2 && b2;
