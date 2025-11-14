@@ -132,7 +132,7 @@ namespace DiscordBotPlugin
             }
         }
 
-        public override IEnumerable<SettingStore> SettingStores => Utilities.EnumerableFrom(_settings);
+        public override IEnumerable<SettingStore> SettingStores => new[] { _settings };
 
         /// <summary>
         /// Represents player playtime information.
