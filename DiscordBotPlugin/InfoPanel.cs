@@ -1,9 +1,10 @@
-﻿using Discord.WebSocket;
-using Discord;
+﻿using Discord;
+using Discord.WebSocket;
 using ModuleShared;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -196,6 +197,11 @@ namespace DiscordBotPlugin
                 builder.WithButton("Backup", "backup-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
             }
 
+            if (settings?.MainSettings?.ShowWhitelistButton == true)
+            {
+                builder.WithButton("Whitelist Request", "whitelist-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+            }
+
             if (updateExisting)
             {
                 foreach (string details in settings?.MainSettings?.InfoMessageDetails ?? new List<string>())
@@ -330,7 +336,12 @@ namespace DiscordBotPlugin
         public async Task OnButtonPress(SocketMessageComponent arg)
         {
             log.Debug($"Button pressed: {arg.Data.CustomId}");
-            await arg.DeferAsync(ephemeral: true);
+            var buttonId = arg.Data.CustomId.Replace("-" + aMPInstanceInfo?.InstanceId, string.Empty);
+
+            if (buttonId != "whitelist-server" && !buttonId.StartsWith("wl_"))
+            {
+                await arg.DeferAsync(ephemeral: true);
+            }
 
             if (arg.User is not SocketGuildUser user)
             {
@@ -338,14 +349,173 @@ namespace DiscordBotPlugin
                 return;
             }
 
+            if (buttonId == "whitelist-server")
+            {
+                var modal = new ModalBuilder()
+                        .WithTitle("Minecraft Whitelist Request")
+                        .WithCustomId("whitelist_modal")
+                        .AddTextInput("Minecraft Username", "mc_name", placeholder: "Your MC username", required: true);
+                await arg.RespondWithModalAsync(modal.Build());
+                return;
+            }
+
+            if (buttonId.StartsWith("wl_"))
+            {
+                // -------------------------------------------------------------
+                // 1. Role Check - Does the staff member have the Whitelist role?
+                // -------------------------------------------------------------
+                if (arg.User is not SocketGuildUser staffUser)
+                {
+                    await arg.RespondAsync("Invalid user context.", ephemeral: true);
+                    return;
+                }
+
+                var roleRef = settings.MainSettings.WhitelistApprovalRole;
+
+                SocketRole? requiredRole = null;
+
+                // Try ID first
+                if (ulong.TryParse(roleRef, out ulong roleId))
+                {
+                    requiredRole = staffUser.Guild.GetRole(roleId);
+                }
+
+                // If not found by ID, try by name
+                if (requiredRole == null)
+                {
+                    requiredRole = staffUser.Guild.Roles
+                        .FirstOrDefault(r => string.Equals(r.Name, roleRef, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (requiredRole == null)
+                {
+                    await arg.RespondAsync(
+                        $"Whitelist approval role `{roleRef}` not found in this server.",
+                        ephemeral: true
+                    );
+                    return;
+                }
+
+                // Check role membership
+                bool hasRole = staffUser.Roles.Any(r => r.Id == requiredRole.Id);
+
+                if (!hasRole)
+                {
+                    await arg.RespondAsync(
+                        "You do not have permission to approve or deny whitelist requests.",
+                        ephemeral: true
+                    );
+                    return;
+                }
+
+                // -------------------------------------------------------------
+                // 2. Parse button data
+                // Button format:
+                // wl_approve:<userId>:<mcName>:<serverName>
+                // wl_deny:<userId>:<mcName>:<serverName>
+                // -------------------------------------------------------------
+                var parts = arg.Data.CustomId.Split(':');
+                if (parts.Length < 4)
+                {
+                    await arg.RespondAsync("Malformed whitelist button data.", ephemeral: true);
+                    return;
+                }
+
+                bool isApprove = parts[0] == "wl_approve";
+                ulong requesterId = ulong.Parse(parts[1]);
+                string mcName = parts[2];
+                string serverName = parts[3];
+
+                var guild = (arg.Channel as SocketGuildChannel)?.Guild;
+
+                if (guild == null)
+                {
+                    await arg.RespondAsync("This action must be used inside a server.", ephemeral: true);
+                    return;
+                }
+
+                var requester = guild.GetUser(requesterId);
+
+                if (requester == null)
+                {
+                    await arg.RespondAsync("Could not find the requester user.", ephemeral: true);
+                    return;
+                }
+
+                // -------------------------------------------------------------
+                // 3. Perform the Approve/Deny Action
+                // -------------------------------------------------------------
+                if (isApprove)
+                {
+                    string command = "whitelist add " + mcName;
+                    IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                    writeableConsole?.WriteLine(command);
+                    log.Info($"Whitelist approved: {mcName} by {staffUser.Username}");
+                }
+                else
+                {
+                    log.Info($"Whitelist denied: {mcName} by {staffUser.Username}");
+                }
+
+                // -------------------------------------------------------------
+                // 4. Update the message embed
+                // -------------------------------------------------------------
+                var originalEmbed = arg.Message.Embeds.FirstOrDefault();
+                var updatedEmbed = new EmbedBuilder()
+                    .WithTitle("Minecraft Whitelist Request")
+                    .WithColor(isApprove ? Color.Green : Color.Red)
+                    .WithTimestamp(DateTimeOffset.UtcNow)
+                    .AddField("Discord User", requester.Mention, true)
+                    .AddField("Minecraft Username", mcName, true)
+                    .AddField("Server", serverName, true)
+                    .AddField("Status", isApprove ? "✔️ Approved" : "❌ Denied", true)
+                    .AddField("Staff", staffUser.Mention, true)
+                    .Build();
+
+                // Remove buttons
+                var components = new ComponentBuilder().Build();
+
+                await arg.UpdateAsync(msg =>
+                {
+                    msg.Embed = updatedEmbed;
+                    msg.Components = components;
+                });
+
+                // -------------------------------------------------------------
+                // 5. DM the requester
+                // -------------------------------------------------------------
+                try
+                {
+                    await requester.SendMessageAsync(
+                        isApprove
+                            ? $"🎉 Your whitelist request for **{mcName}** on **{serverName}** has been **approved**!"
+                            : $"❌ Your whitelist request for **{mcName}** on **{serverName}** has been **denied**."
+                    );
+                }
+                catch
+                {
+                    log.Warning($"Could not DM whitelist request result to {requester.Username}.");
+                }
+
+                // -------------------------------------------------------------
+                // 6. Acknowledge the staff member (ephemeral)
+                // -------------------------------------------------------------
+                await arg.FollowupAsync(
+                    isApprove ? "Whitelist approved." : "Whitelist denied.",
+                    ephemeral: true
+                );
+
+                return;
+            }
+
+
             bool hasServerPermission = bot?.HasServerPermission(user) ?? false;
             if (!hasServerPermission)
             {
                 await arg.FollowupAsync("You do not have permission to perform this action.", ephemeral: true);
                 return;
             }
-
-            var buttonId = arg.Data.CustomId.Replace("-" + aMPInstanceInfo?.InstanceId, string.Empty);
+            
             switch (buttonId)
             {
                 case "start-server":
