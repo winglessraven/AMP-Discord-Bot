@@ -372,12 +372,33 @@ namespace DiscordBotPlugin
 
                 var roleRef = settings.MainSettings.WhitelistApprovalRole;
 
+                var roleRefs = settings.MainSettings.WhitelistApprovalRole;
+
+                // Split into multiple items (trim whitespace, ignore empty entries)
+                var roleEntries = roleRefs
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(r => r.Trim());
+
                 SocketRole? requiredRole = null;
 
-                // Try ID first
-                if (ulong.TryParse(roleRef, out ulong roleId))
+                foreach (var entry in roleEntries)
                 {
-                    requiredRole = staffUser.Guild.GetRole(roleId);
+                    // Try parse as ID first
+                    if (ulong.TryParse(entry, out ulong roleId))
+                    {
+                        requiredRole = staffUser.Guild.GetRole(roleId);
+                        if (requiredRole != null)
+                            break; // Found a valid role, stop checking
+                    }
+                    else
+                    {
+                        // Try by name as fallback
+                        requiredRole = staffUser.Guild.Roles
+                            .FirstOrDefault(r => string.Equals(r.Name, entry, StringComparison.OrdinalIgnoreCase));
+
+                        if (requiredRole != null)
+                            break;
+                    }
                 }
 
                 // If not found by ID, try by name
@@ -448,7 +469,12 @@ namespace DiscordBotPlugin
                 if (isApprove)
                 {
                     string command = "whitelist add " + mcName;
-                    IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                    if (settings.MainSettings.CustomWhitelistCommand != "")
+                    {
+                        command = settings.MainSettings.CustomWhitelistCommand + " " + mcName;
+                    }
+
+                        IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                     writeableConsole?.WriteLine(command);
                     log.Info($"Whitelist approved: {mcName} by {staffUser.Username}");
                 }

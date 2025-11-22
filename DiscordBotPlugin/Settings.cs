@@ -150,6 +150,9 @@ namespace DiscordBotPlugin
             [WebSetting("Whitelist Approval Role", "Discord role that is allowed to approve whitelist requests", false, Subcategory: "Logging:output:4")]
             public string WhitelistApprovalRole = "";
 
+            [WebSetting("Custom Whitelist Command", "Custom whitelist command, if blank will use default `/whitelist add`. Enter without / (e.g. `globalwhitelist add`)", false, Subcategory: "Logging:output:4")]
+            public string CustomWhitelistCommand = "";
+
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false, Subcategory: "Discord Config:settings:1")]
             public bool DiscordDebugMode = false;
 
