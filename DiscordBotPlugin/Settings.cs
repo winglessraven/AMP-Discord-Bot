@@ -97,6 +97,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Backup Button", "Toggle the backup button visibility on the info panel", false, Subcategory: "Buttons:radio_button_checked:3")]
             public bool ShowBackupButton = false;
 
+            [WebSetting("Display Whitelist Request Button", "Toggle the whitelist request button visibility on the info panel (will only work for Minecraft instances)", false, Subcategory: "Buttons:radio_button_checked:3")]
+            public bool ShowWhitelistButton = false;
+
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowOnlinePlayers = false;
 
@@ -140,6 +143,15 @@ namespace DiscordBotPlugin
 
             [WebSetting("Exclude Console Output", "Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. *message to ignore*", false, Subcategory: "Logging:output:4")]
             public List<string> ExcludeConsoleOutput = new List<string>();
+
+            [WebSetting("Whitelist Request Channel", "Discord channel name (or ID) to send whitelist requests to (if enabled)", false, Subcategory: "Logging:output:4")]
+            public string WhitelistRequestChannel = "";
+
+            [WebSetting("Whitelist Approval Role", "Discord role that is allowed to approve whitelist requests", false, Subcategory: "Logging:output:4")]
+            public string WhitelistApprovalRole = "";
+
+            [WebSetting("Custom Whitelist Command", "Custom whitelist command, if blank will use default `/whitelist add`. Enter without / (e.g. `globalwhitelist add`)", false, Subcategory: "Logging:output:4")]
+            public string CustomWhitelistCommand = "";
 
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false, Subcategory: "Discord Config:settings:1")]
             public bool DiscordDebugMode = false;

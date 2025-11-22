@@ -80,6 +80,7 @@ namespace DiscordBotPlugin
                 client.ButtonExecuted += infoPanel.OnButtonPress;
                 client.Ready += ClientReady;
                 client.SlashCommandExecuted += SlashCommandHandler;
+                client.ModalSubmitted += OnModalSubmitted;
                 if (settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer)
                     client.MessageReceived += MessageHandler;
             }
@@ -1195,8 +1196,8 @@ namespace DiscordBotPlugin
                 }
                 await client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
             }
-
-            await arg.FollowupAsync($"`{Command}` command has been processed.", ephemeral: true);
+            
+            await arg.FollowupAsync($"`{Command}` command has been processed.", ephemeral: true);            
         }
 
         /// <summary>
@@ -1625,5 +1626,85 @@ namespace DiscordBotPlugin
             }
         }
 
+        public async Task OnModalSubmitted(SocketModal modal)
+        {
+            if (modal.Data.CustomId != "whitelist_modal")
+                return;
+
+            // Extract the Minecraft username
+            string mcName = modal.Data.Components
+                .First(c => c.CustomId == "mc_name")
+                .Value;
+
+            // Now call your method
+            await WhitelistRequest(modal, mcName);
+
+            // Respond to modal
+            await modal.RespondAsync($"Whitelist request submitted for **{mcName}**!", ephemeral: true);
+        }
+
+        public async Task WhitelistRequest(SocketModal modal, string mcName)
+        {
+            // Safety check: Make sure the channel exists
+            if (settings.MainSettings.WhitelistRequestChannel == "")
+            {
+                log.Error("WhitelistRequestChannel is not configured.");
+                return;
+            }
+
+            var guild = client.GetGuild(modal.GuildId.Value);
+            var channelRef = settings.MainSettings.WhitelistRequestChannel;
+
+            if (string.IsNullOrWhiteSpace(channelRef))
+            {
+                log.Error("WhitelistRequestChannel not configured.");
+                return;
+            }
+
+            SocketTextChannel? channel = null;
+
+            // Check if whitelist request channel is an ID
+            if (ulong.TryParse(channelRef, out ulong channelId))
+            {
+                channel = guild.GetTextChannel(channelId);
+            }
+
+            // If not found or not numeric, try by name
+            if (channel == null)
+            {
+                channel = guild.TextChannels
+                    .FirstOrDefault(c => string.Equals(c.Name, channelRef, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (channel == null)
+            {
+                log.Error($"Could not find WhitelistRequestChannel '{channelRef}' in guild {guild.Id}");
+                return;
+            }
+
+            var serverName = settings.MainSettings.ServerDisplayName;
+
+            // --- Build the embed ---
+            var embed = new EmbedBuilder()
+                .WithTitle("Minecraft Whitelist Request")
+                .WithColor(Color.Blue)
+                .AddField("Discord User", modal.User.Mention, true)
+                .AddField("Minecraft Username", mcName, true)
+                .AddField("Server", settings?.MainSettings?.ServerDisplayName, true)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
+
+            // --- Buttons ---
+            // Encode the user + mcName + server into the button ID
+            var components = new ComponentBuilder()
+                .WithButton("Approve", $"wl_approve:{modal.User.Id}:{mcName}:{serverName}", ButtonStyle.Success)
+                .WithButton("Deny", $"wl_deny:{modal.User.Id}:{mcName}:{serverName}", ButtonStyle.Danger)
+                .Build();
+
+            // Post to the request channel
+            await channel.SendMessageAsync(embed: embed, components: components);
+
+            log.Info($"Whitelist request created for {modal.User.Username} ({mcName}) on server {serverName}.");
+        }
     }
 }
