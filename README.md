@@ -135,6 +135,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Display Update Button|Toggle the update button on the info panel|
 |Display Manage Button|Toggle the manage button on the info panel|
 |Display Backup Button|Toggle the backup button on the info panel|
+|Display Whitelist Request Button|Toggle the whitelist request button on the info panel|
 |Display Online Player List|Show a list of online players in the info panel (if supported)|
 |Change Displayed Status|Change default AMP status text to custom (see [here](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text))|
 |Online Server Bot Presence Text|Change the presence text when the application is running.  Use `{OnlinePlayers}` and `{MaximumPlayers}` as variables|
@@ -148,6 +149,9 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Send Console to Discord|Send console output to a Discord channel|
 |Console Discord Channel|Discord channel name to send console output to (if enabled)|
 |Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
+|Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled)|
+|Whitelist Approval Role|Discord role that is allowed to approve whitelist requests|
+|Custom Whitelist Command|Custom whitelist command, if blank will use default `/whitelist add`. Enter without `/` (e.g. `globalwhitelist add`)|
 |Enable Web Panel|Enable the web panel. This will create a html file in a similar format to the Discord info panel for website embeds. Additional steps are required to map the html file to make it accessible. See the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Configure-the-Web-Panel)|
 |Commmands Tab Options|Enable/Disable specific commands, regardless of roles|
 
@@ -160,3 +164,26 @@ The `Discord Bot Game Specific` section is for game specific settings. These wil
 | Option | Description                    |
 | ------------- | ------------------------------ |
 |Valheim Join Code|Keep track of the Valheim join code in the console output and add it to the info panel accordingly|
+
+## Whitelist Request Process (for Minecraft)
+Enable *Display Whitelist Request Button*
+Set Whitelist Request Channel (the channel to send whitelist requests to for approval)
+Set the Whitelist Approval Role (roles that can approve whitelist requests)
+If required, add custom whitelist command (if not default `/whitelist add [playername]`)
+
+User requests access...
+
+<img width="772" height="602" alt="517426921-e8201d2b-1a01-44ee-b5d4-f6cbea7674f8" src="https://github.com/user-attachments/assets/2d878f20-bf9b-4a5b-92e9-cf87e530c304" />
+
+Approval request is created...
+
+<img width="438" height="201" alt="517427092-950653d6-97c1-4791-aa54-ed537bf488e6" src="https://github.com/user-attachments/assets/0b1e9599-df2a-45c0-b7ca-6673fc8e2bf4" />
+
+When actioned, message is changed to show status and user is DM'd...
+
+<img width="413" height="216" alt="517427282-deff83c2-33a9-4461-a27f-073c70607d51" src="https://github.com/user-attachments/assets/4be0937d-33ac-4335-9a73-f408674fbab4" />
+
+<img width="554" height="39" alt="517427389-f7560ab5-b87b-4dd6-8f22-bb925f888e10" src="https://github.com/user-attachments/assets/cd683d15-ab81-4812-ad8c-c039a66c2257" />
+
+
+
