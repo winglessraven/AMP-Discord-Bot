@@ -147,6 +147,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Chat Discord Channel|Discord channel name to send chat messages to (if enabled)|
 |Send Chat from Discord to Server|Attempt to send chat messages from Discord chat channel to the server (currently only supported for Minecraft)|
 |Send Console to Discord|Send console output to a Discord channel|
+|Console to Discord Batch Timer|How long to wait between output batches (to reduce likelyhood of being rate limited)|
 |Console Discord Channel|Discord channel name to send console output to (if enabled)|
 |Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
 |Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled)|

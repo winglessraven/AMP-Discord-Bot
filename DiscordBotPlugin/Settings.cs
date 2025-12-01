@@ -138,6 +138,9 @@ namespace DiscordBotPlugin
             [WebSetting("Send Console to Discord", "Send console output to a Discord channel", false, Subcategory: "Logging:output:4")]
             public bool SendConsoleToDiscord;
 
+            [WebSetting("Console to Discord Batch Timer", "How long to wait between output batches (to reduce likelyhood of being rate limited)", false, Subcategory: "Logging:output:4")]
+            public int ConsoleBatchTimer = 10;
+
             [WebSetting("Console Discord Channel", "Discord channel name (or ID) to send console output to (if enabled)", false, Subcategory: "Logging:output:4")]
             public string ConsoleToDiscordChannel = "";
 
