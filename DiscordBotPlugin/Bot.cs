@@ -1240,30 +1240,30 @@ namespace DiscordBotPlugin
                    settings.MainSettings.SendConsoleToDiscord &&
                    settings.MainSettings.BotActive)
             {
+                // Delay the execution for specified time
+                int timeToWait = settings.MainSettings.ConsoleBatchTimer * 1000;
+
                 if (consoleOutput.Count > 0)
                 {
                     try
                     {
-                        // Create a duplicate list of console output messages
-                        List<string> messages = new List<string>(consoleOutput);
-                        consoleOutput.Clear();
-
-                        // Split the output into multiple strings, each presented within a code block
-                        List<string> outputStrings = helper.SplitOutputIntoCodeBlocks(messages);
+                        consoleOutput = helper.SplitOutputIntoCodeBlocks(consoleOutput);
 
                         // Get all guilds the bot is a member of, ensuring it's not null
                         var guilds = client.Guilds;
 
-                        // Iterate over each output string
-                        foreach (string output in outputStrings)
-                        {
+                        // Send the first item of console output messages to the specified channel in each guild
+
+                        string output = consoleOutput[0];
+
 
                             //sanitize possible passwords
                             string pattern = @"(""Password"":\s*"")(.*?)("")";
                             string redacted = Regex.Replace(output, pattern, "$1[REDACTED]$3");
+                            string codeBlock = $"```{redacted}```";
 
-                            // Use LINQ to select non-null text channels
-                            var textChannels = (from SocketGuild guild in guilds
+                        // Use LINQ to select non-null text channels
+                        var textChannels = (from SocketGuild guild in guilds
                                                 let eventChannel = GetEventChannel(guild.Id, settings.MainSettings.ConsoleToDiscordChannel)
                                                 where eventChannel != null
                                                 let textChannel = guild.GetTextChannel(eventChannel.Id)
@@ -1272,12 +1272,10 @@ namespace DiscordBotPlugin
 
                             foreach (var textChannel in textChannels)
                             {
-                                await textChannel.SendMessageAsync(redacted);
+                                await textChannel.SendMessageAsync(codeBlock);
                             }
-                        }
 
-                        // Clear the duplicate list
-                        messages.Clear();
+                            consoleOutput.RemoveAt(0);
                     }
                     catch (Exception ex)
                     {
@@ -1285,8 +1283,8 @@ namespace DiscordBotPlugin
                     }
                 }
 
-                // Delay the execution for 10 seconds
-                await Task.Delay(10000);
+                // Delay the execution for specified time
+                await Task.Delay(timeToWait);
             }
         }
 

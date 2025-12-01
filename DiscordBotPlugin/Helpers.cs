@@ -315,7 +315,8 @@ namespace DiscordBotPlugin
             {
                 if (currentString.Length + message.Length + Environment.NewLine.Length + 6 > MaxCodeBlockLength)
                 {
-                    outputStrings.Add($"```{currentString}```");
+                    //remove previous code block formatting
+                    outputStrings.Add(currentString);
                     currentString = "";
                 }
 
@@ -328,7 +329,7 @@ namespace DiscordBotPlugin
 
             if (!string.IsNullOrEmpty(currentString))
             {
-                outputStrings.Add($"```{currentString}```");
+                outputStrings.Add(currentString);
             }
 
             return outputStrings;
