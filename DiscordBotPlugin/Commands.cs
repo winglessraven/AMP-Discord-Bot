@@ -120,6 +120,9 @@ namespace DiscordBotPlugin
                 if (application.ApplicationName == "Palworld")
                     command = $"broadcast <{author}>_{msg.Replace(" ","_")}";
 
+                if (application.ApplicationName == "ARK: Survival Ascended")
+                    command = $"serverchat <{author}> {msg}";
+
                 // Send the chat command to the AMP instance
                 IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                 writeableConsole?.WriteLine(command);
