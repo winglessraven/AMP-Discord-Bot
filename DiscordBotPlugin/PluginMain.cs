@@ -30,7 +30,7 @@ namespace DiscordBotPlugin
             this.application = application;
             _features = Features;
 
-            _features.PostLoadPlugin(application, "LocalFileBackupPlugin");
+            _features.PostLoadPluginAsync(application, "LocalFileBackupPlugin");
 
             config.SaveMethod = PluginSaveMethod.KVP;
             config.KVPSeparator = "=";
@@ -70,10 +70,11 @@ namespace DiscordBotPlugin
         /// Initializes the bot and assigns an instance of WebMethods to APIMethods.
         /// </summary>
         /// <param name="APIMethods">An output parameter to hold the instance of WebMethods.</param>
-        public override void Init(out WebMethodsBase APIMethods)
+        public override Task<WebMethodsBase> InitAsync()
         {
             // Create a new instance of WebMethods and assign it to APIMethods
-            APIMethods = new WebMethods(_tasks);
+            WebMethodsBase APIMethods = new WebMethods(_tasks);
+            return Task.FromResult(APIMethods);
         }
 
         public override bool HasFrontendContent => false;
@@ -81,7 +82,7 @@ namespace DiscordBotPlugin
         /// <summary>
         /// Performs post-initialization actions for the bot.
         /// </summary>
-        public override void PostInit()
+        public override Task PostInitAsync()
         {
             _backupProvider = (BackupProvider)_features.RequestFeature<BackupProvider>();
             commands.SetBackupProvider(_backupProvider);  // Inject backupprovider
@@ -130,6 +131,7 @@ namespace DiscordBotPlugin
                     }
                 });
             }
+            return Task.CompletedTask;
         }
 
         public override IEnumerable<SettingStore> SettingStores => new[] { _settings };
