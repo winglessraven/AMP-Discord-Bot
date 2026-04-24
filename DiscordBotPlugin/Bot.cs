@@ -1256,11 +1256,22 @@ namespace DiscordBotPlugin
 
                         string output = consoleOutput[0];
 
+                        if (string.IsNullOrWhiteSpace(output))
+                        {
+                            consoleOutput.RemoveAt(0);
+                            continue;
+                        }
 
-                            //sanitize possible passwords
-                            string pattern = @"(""Password"":\s*"")(.*?)("")";
-                            string redacted = Regex.Replace(output, pattern, "$1[REDACTED]$3");
-                            string codeBlock = $"```{redacted}```";
+                        string pattern = @"(""Password"":\s*"")(.*?)("")";
+                        string redacted = Regex.Replace(output, pattern, "$1[REDACTED]$3");
+
+                        if (string.IsNullOrWhiteSpace(redacted))
+                        {
+                            consoleOutput.RemoveAt(0);
+                            continue;
+                        }
+
+                        string codeBlock = $"```{redacted}```";
 
                         // Use LINQ to select non-null text channels
                         var textChannels = (from SocketGuild guild in guilds
