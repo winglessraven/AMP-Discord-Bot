@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -25,6 +26,16 @@ namespace DiscordBotPlugin
         private readonly Helpers helper;
         private readonly InfoPanel infoPanel;
         private readonly Commands commands;
+
+        private bool _statusLoopStarted = false;
+        private bool _consoleLoopStarted = false;
+        private bool _webPanelLoopStarted = false;
+        private bool _statusRefreshInProgress = false;
+        private bool _commandsRegisteredThisSession = false;
+        private bool _connectInProgress = false;
+
+        private DateTime _lastRateLimitLogUtc = DateTime.MinValue;
+        private readonly object _rateLimitLogLock = new object();
 
         public Bot(Settings settings, IAMPInstanceInfo aMPInstanceInfo, IApplicationWrapper application, ILogger log, Events events, Helpers helper, InfoPanel infoPanel, Commands commands)
         {
@@ -52,54 +63,109 @@ namespace DiscordBotPlugin
         /// <returns>Task</returns>
         public async Task ConnectDiscordAsync(string BotToken)
         {
-            if (string.IsNullOrEmpty(BotToken))
+            if (_connectInProgress)
+            {
+                log.Warning("Discord connection attempt already in progress. Skipping duplicate connect request.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(BotToken))
             {
                 log.Error("Bot token is not provided.");
                 return;
             }
 
-            DiscordSocketConfig config;
-
-            if (client == null)
-            {
-                // Initialize DiscordSocketClient with the necessary config
-                config = settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer
-                    ? new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds | GatewayIntents.MessageContent }
-                    : new DiscordSocketConfig { GatewayIntents = GatewayIntents.DirectMessages | GatewayIntents.GuildMessages | GatewayIntents.Guilds };
-
-                // Handle mismatch timezones
-                config.UseInteractionSnowflakeDate = false;
-
-                if (settings.MainSettings.DiscordDebugMode)
-                    config.LogLevel = LogSeverity.Debug;
-
-                client = new DiscordSocketClient(config);
-
-                // Attach event handlers for logs and events
-                client.Log += events.Log;
-                client.ButtonExecuted += infoPanel.OnButtonPress;
-                client.Ready += ClientReady;
-                client.SlashCommandExecuted += SlashCommandHandler;
-                client.ModalSubmitted += OnModalSubmitted;
-                if (settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer)
-                    client.MessageReceived += MessageHandler;
-            }
+            _connectInProgress = true;
 
             try
             {
+                if (client == null)
+                {
+                    DiscordSocketConfig config = settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer
+                        ? new DiscordSocketConfig
+                        {
+                            GatewayIntents = GatewayIntents.DirectMessages |
+                                             GatewayIntents.GuildMessages |
+                                             GatewayIntents.Guilds |
+                                             GatewayIntents.MessageContent
+                        }
+                        : new DiscordSocketConfig
+                        {
+                            GatewayIntents = GatewayIntents.DirectMessages |
+                                             GatewayIntents.GuildMessages |
+                                             GatewayIntents.Guilds
+                        };
+
+                    config.UseInteractionSnowflakeDate = false;
+
+                    if (settings.MainSettings.DiscordDebugMode)
+                    {
+                        config.LogLevel = LogSeverity.Debug;
+                    }
+
+                    client = new DiscordSocketClient(config);
+
+                    client.Log += events.Log;
+                    client.ButtonExecuted += infoPanel.OnButtonPress;
+                    client.Ready += ClientReady;
+                    client.SlashCommandExecuted += SlashCommandHandler;
+                    client.ModalSubmitted += OnModalSubmitted;
+
+                    if (settings.MainSettings.SendChatToDiscord || settings.MainSettings.SendDiscordChatToServer)
+                    {
+                        client.MessageReceived += MessageHandler;
+                    }
+                }
+
+                if (client.ConnectionState == ConnectionState.Connected ||
+                    client.ConnectionState == ConnectionState.Connecting)
+                {
+                    log.Warning($"Discord client is already {client.ConnectionState}. Skipping duplicate start.");
+                    return;
+                }
+
                 await client.LoginAsync(TokenType.Bot, BotToken);
                 await client.StartAsync();
+
                 log.Info("Bot successfully connected.");
 
-                _ = SetStatus();
-                _ = ConsoleOutputSend();
-                _ = infoPanel.UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
+                if (!_statusLoopStarted)
+                {
+                    _statusLoopStarted = true;
+                    _ = SetStatus();
+                }
+                else
+                {
+                    log.Warning("Status loop is already running. Not starting another copy.");
+                }
 
-                await Task.Delay(-1); // Blocks task until stopped
+                if (!_consoleLoopStarted)
+                {
+                    _consoleLoopStarted = true;
+                    _ = ConsoleOutputSend();
+                }
+                else
+                {
+                    log.Warning("Console output loop is already running. Not starting another copy.");
+                }
+
+                if (!_webPanelLoopStarted)
+                {
+                    _webPanelLoopStarted = true;
+                    _ = infoPanel.UpdateWebPanel(Path.Combine(Environment.CurrentDirectory, "WebPanel-" + aMPInstanceInfo.InstanceName));
+                }
+                else
+                {
+                    log.Warning("Web panel loop is already running. Not starting another copy.");
+                }
             }
             catch (Exception ex)
             {
                 log.Error("Error during bot connection: " + ex.Message);
+            }
+            finally
+            {
+                _connectInProgress = false;
             }
         }
 
@@ -111,82 +177,164 @@ namespace DiscordBotPlugin
                 return;
             }
 
-            if (settings.MainSettings.BotActive && (args == null || args.PreviousState != args.NextState || force) && client.ConnectionState == ConnectionState.Connected)
+            if (!settings.MainSettings.BotActive)
             {
-                try
+                return;
+            }
+
+            if (client.ConnectionState != ConnectionState.Connected)
+            {
+                log.Warning($"Bot client is {client.ConnectionState}. Cannot update presence.");
+                return;
+            }
+
+            if (args != null && args.PreviousState == args.NextState && !force)
+            {
+                return;
+            }
+
+            try
+            {
+                string currentActivity = client.Activity?.Name ?? "";
+
+                if (client.Activity is CustomStatusGame customStatus && !string.IsNullOrWhiteSpace(customStatus.State))
                 {
+                    currentActivity = customStatus.State;
+                }
 
-                    string currentActivity = client.Activity?.Name ?? "";
-                    if (currentActivity != "")
+                UserStatus currentStatus = client.Status;
+                UserStatus desiredStatus;
+
+                int onlinePlayers = 0;
+                int maximumPlayers = 0;
+
+                if (application is IHasSimpleUserList hasSimpleUserList)
+                {
+                    onlinePlayers = hasSimpleUserList.Users.Count;
+                    maximumPlayers = hasSimpleUserList.MaxUsers;
+                }
+
+                if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
+                {
+                    desiredStatus = UserStatus.DoNotDisturb;
+
+                    if (infoPanel.playerPlayTimes.Count != 0)
                     {
-                        var customStatus = client.Activity as CustomStatusGame;
-                        if (customStatus != null)
-                        {
-                            currentActivity = customStatus.State;
-                        }
-                    }
-                    UserStatus currentStatus = client.Status;
-                    UserStatus status;
-
-                    // Get the current user and max user count
-                    IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
-                    var onlinePlayers = hasSimpleUserList.Users.Count;
-                    var maximumPlayers = hasSimpleUserList.MaxUsers;
-
-                    // If the server is stopped or in a failed state, set the presence to DoNotDisturb
-                    if (application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed)
-                    {
-                        status = UserStatus.DoNotDisturb;
-
-                        // If there are still players listed in the timer, remove them
-                        if (infoPanel.playerPlayTimes.Count != 0)
-                            helper.ClearAllPlayTimes();
-                    }
-                    // If the server is running, set presence to Online
-                    else if (application.State == ApplicationState.Ready)
-                    {
-                        status = UserStatus.Online;
-                    }
-                    // For everything else, set to Idle
-                    else
-                    {
-                        status = UserStatus.Idle;
-
-                        // If there are still players listed in the timer, remove them
-                        if (infoPanel.playerPlayTimes.Count != 0)
-                            helper.ClearAllPlayTimes();
-                    }
-
-                    if (status != currentStatus)
-                    {
-                        await client.SetStatusAsync(status);
-                    }
-
-                    string presenceString = helper.OnlineBotPresenceString(onlinePlayers, maximumPlayers);
-
-                    // Set the presence/activity based on the server state
-                    if (application.State == ApplicationState.Ready)
-                    {
-                        if (currentActivity != presenceString)
-                        {
-                            await client.SetActivityAsync(new CustomStatusGame(helper.OnlineBotPresenceString(onlinePlayers, maximumPlayers)));
-                        }
-                    }
-                    else
-                    {
-                        if (presenceString != application.State.ToString())
-                        {
-                            await client.SetActivityAsync(new CustomStatusGame(application.State.ToString()));
-                        }
+                        helper.ClearAllPlayTimes();
                     }
                 }
-                catch (System.Net.WebException exception)
+                else if (application.State == ApplicationState.Ready)
                 {
-                    await client.SetGameAsync("Server Offline", null, ActivityType.Watching);
-                    await client.SetStatusAsync(UserStatus.DoNotDisturb);
-                    log.Error("Exception: " + exception.Message);
+                    desiredStatus = UserStatus.Online;
+                }
+                else
+                {
+                    desiredStatus = UserStatus.Idle;
+
+                    if (infoPanel.playerPlayTimes.Count != 0)
+                    {
+                        helper.ClearAllPlayTimes();
+                    }
+                }
+
+                if (desiredStatus != currentStatus)
+                {
+                    await client.SetStatusAsync(desiredStatus);
+                }
+
+                string desiredActivity = application.State == ApplicationState.Ready
+                    ? helper.OnlineBotPresenceString(onlinePlayers, maximumPlayers)
+                    : application.State.ToString();
+
+                if (!string.Equals(currentActivity, desiredActivity, StringComparison.Ordinal))
+                {
+                    await client.SetActivityAsync(new CustomStatusGame(desiredActivity));
                 }
             }
+            catch (RateLimitedException ex)
+            {
+                await HandleDiscordRateLimitAsync(ex, "UpdatePresence");
+            }
+            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+            {
+                await HandleDiscordRateLimitAsync(ex, "UpdatePresence");
+            }
+            catch (System.Net.WebException exception)
+            {
+                log.Error("Exception updating Discord presence: " + exception.Message);
+
+                try
+                {
+                    if (client.ConnectionState == ConnectionState.Connected)
+                    {
+                        await client.SetGameAsync("Server Offline", null, ActivityType.Watching);
+                        await client.SetStatusAsync(UserStatus.DoNotDisturb);
+                    }
+                }
+                catch (RateLimitedException ex)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "UpdatePresence fallback");
+                }
+                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "UpdatePresence fallback");
+                }
+                catch (Exception fallbackException)
+                {
+                    log.Error("Failed to set fallback Discord presence: " + fallbackException.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error("Error updating Discord presence: " + ex.Message);
+            }
+        }
+
+        public async Task HandleDiscordRateLimitAsync(Exception exception, string context, int fallbackDelayMs = 15000)
+        {
+            string message = exception?.Message ?? "Unknown rate limit exception";
+            string requestInfo = "Unknown request";
+            string extraInfo = "";
+
+            if (exception is RateLimitedException rateLimitedException)
+            {
+                requestInfo = rateLimitedException.Request?.ToString() ?? "Unknown request";
+                extraInfo = "Discord.Net RateLimitedException was thrown.";
+            }
+            else if (exception is HttpException httpException)
+            {
+                requestInfo = httpException.Request?.ToString() ?? "Unknown request";
+                extraInfo =
+                    $"HTTP {(int)httpException.HttpCode} {httpException.HttpCode}. " +
+                    $"DiscordCode: {(httpException.DiscordCode?.ToString() ?? "None")}. " +
+                    $"Reason: {(string.IsNullOrWhiteSpace(httpException.Reason) ? "None" : httpException.Reason)}.";
+            }
+
+            bool shouldLog = false;
+
+            lock (_rateLimitLogLock)
+            {
+                if ((DateTime.UtcNow - _lastRateLimitLogUtc).TotalSeconds >= 5)
+                {
+                    _lastRateLimitLogUtc = DateTime.UtcNow;
+                    shouldLog = true;
+                }
+            }
+
+            if (shouldLog)
+            {
+                log.Warning(
+                    $"Discord rate limit detected in {context}. " +
+                    $"{extraInfo} Request: {requestInfo}. " +
+                    $"Waiting {fallbackDelayMs}ms before continuing. Exception: {message}"
+                );
+            }
+            else
+            {
+                log.Debug($"Discord rate limit detected in {context}, but log was suppressed to avoid spam. Waiting {fallbackDelayMs}ms.");
+            }
+
+            await Task.Delay(fallbackDelayMs);
         }
 
         /// <summary>
@@ -195,39 +343,107 @@ namespace DiscordBotPlugin
         /// <returns></returns>
         public async Task SetStatus()
         {
-            // While the bot is active, update its status
-            while (settings != null && settings.MainSettings != null && settings.MainSettings.BotActive && client != null)
+            while (settings != null &&
+                   settings.MainSettings != null &&
+                   settings.MainSettings.BotActive &&
+                   client != null)
             {
+                int delaySeconds = Math.Max(settings.MainSettings.BotRefreshInterval, 30);
+                int delayMilliseconds = delaySeconds * 1000;
+
+                if (_statusRefreshInProgress)
+                {
+                    log.Warning("Skipping status refresh because the previous refresh is still running.");
+                    await Task.Delay(delayMilliseconds);
+                    continue;
+                }
+
+                _statusRefreshInProgress = true;
+
                 try
                 {
-
-                    // Get the current user and max user count
-                    IHasSimpleUserList hasSimpleUserList = application as IHasSimpleUserList;
-                    var onlinePlayers = hasSimpleUserList.Users.Count;
-                    var maximumPlayers = hasSimpleUserList.MaxUsers;
-
-                    var clientConnectionState = client.ConnectionState.ToString();
-                    log.Debug("Server Status: " + application.State + " || Players: " + onlinePlayers + "/" + maximumPlayers + " || CPU: " + application.GetCPUUsage() + "% || Memory: " + helper.GetMemoryUsage() + ", Bot Connection Status: " + clientConnectionState);
-
-                    // Update the embed if it exists
-                    if (settings.MainSettings.InfoMessageDetails != null && settings.MainSettings.InfoMessageDetails.Count > 0)
+                    if (client.ConnectionState != ConnectionState.Connected)
                     {
-                        _ = infoPanel.GetServerInfo(true, null, false);
+                        log.Warning($"Skipping Discord status refresh because client is {client.ConnectionState}.");
                     }
+                    else
+                    {
+                        if (application is IHasSimpleUserList hasSimpleUserList)
+                        {
+                            var onlinePlayers = hasSimpleUserList.Users.Count;
+                            var maximumPlayers = hasSimpleUserList.MaxUsers;
 
-                    //change presence if required
-                    _ = UpdatePresence(null, null, true);
+                            var clientConnectionState = client.ConnectionState.ToString();
+
+                            log.Debug("Server Status: " + application.State +
+                                      " || Players: " + onlinePlayers + "/" + maximumPlayers +
+                                      " || CPU: " + application.GetCPUUsage() + "%" +
+                                      " || Memory: " + helper.GetMemoryUsage() +
+                                      ", Bot Connection Status: " + clientConnectionState);
+                        }
+                        else
+                        {
+                            log.Debug("Server Status: " + application.State +
+                                      " || CPU: " + application.GetCPUUsage() + "%" +
+                                      " || Memory: " + helper.GetMemoryUsage() +
+                                      ", Bot Connection Status: " + client.ConnectionState);
+                        }
+
+                        if (settings.MainSettings.InfoMessageDetails != null &&
+                            settings.MainSettings.InfoMessageDetails.Count > 0)
+                        {
+                            await infoPanel.GetServerInfo(true, null, false);
+                        }
+
+                        await UpdatePresence(null, null, false);
+                    }
+                }
+                catch (RateLimitedException ex)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "SetStatus");
+                }
+                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "SetStatus");
                 }
                 catch (System.Net.WebException exception)
                 {
-                    await client.SetGameAsync("Server Offline", null, ActivityType.Watching);
-                    await client.SetStatusAsync(UserStatus.DoNotDisturb);
-                    log.Error("Exception: " + exception.Message);
+                    log.Error("Web exception during status refresh: " + exception.Message);
+
+                    try
+                    {
+                        if (client.ConnectionState == ConnectionState.Connected)
+                        {
+                            await client.SetGameAsync("Server Offline", null, ActivityType.Watching);
+                            await client.SetStatusAsync(UserStatus.DoNotDisturb);
+                        }
+                    }
+                    catch (RateLimitedException ex)
+                    {
+                        await HandleDiscordRateLimitAsync(ex, "SetStatus fallback presence");
+                    }
+                    catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                    {
+                        await HandleDiscordRateLimitAsync(ex, "SetStatus fallback presence");
+                    }
+                    catch (Exception statusException)
+                    {
+                        log.Error("Failed to set offline fallback status: " + statusException.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.Error("Error during status refresh: " + ex.Message);
+                }
+                finally
+                {
+                    _statusRefreshInProgress = false;
                 }
 
-                // Loop the task according to the bot refresh interval setting
-                await Task.Delay(settings.MainSettings.BotRefreshInterval * 1000);
+                await Task.Delay(delayMilliseconds);
             }
+
+            _statusLoopStarted = false;
         }
 
         /// <summary>
@@ -235,13 +451,17 @@ namespace DiscordBotPlugin
         /// </summary>
         public async Task ClientReady()
         {
-            // Create lists to store command properties and command builders
+            if (_commandsRegisteredThisSession)
+            {
+                log.Info("Discord client ready. Slash command registration already completed this session; skipping bulk overwrite.");
+                return;
+            }
+
             List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
             List<SlashCommandBuilder> commandList = new List<SlashCommandBuilder>();
 
             if (settings.MainSettings.RemoveBotName)
             {
-                // Add individual commands to the command list
                 commandList.Add(new SlashCommandBuilder()
                     .WithName("info")
                     .WithDescription("Create the Server Info Panel")
@@ -297,18 +517,14 @@ namespace DiscordBotPlugin
                 if (client != null && client.CurrentUser != null)
                 {
                     string botName = client.CurrentUser.Username.ToLower();
-
-                    // Replace any spaces with '-'
-                    botName = Regex.Replace(botName, "[^a-zA-Z0-9]", String.Empty);
+                    botName = Regex.Replace(botName, "[^a-zA-Z0-9]", string.Empty);
 
                     log.Info("Base command for bot: " + botName);
 
-                    // Create the base bot command with subcommands
                     SlashCommandBuilder baseCommand = new SlashCommandBuilder()
                         .WithName(botName)
                         .WithDescription("Base bot command");
 
-                    // Add subcommands to the base command
                     baseCommand.AddOption(new SlashCommandOptionBuilder()
                         .WithName("info")
                         .WithDescription("Create the Server Info Panel")
@@ -360,7 +576,6 @@ namespace DiscordBotPlugin
                         .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
                         .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
 
-                    // Add the base command to the command list
                     commandList.Add(baseCommand);
                 }
                 else
@@ -372,18 +587,28 @@ namespace DiscordBotPlugin
 
             try
             {
-                // Build the application command properties from the command builders
                 foreach (SlashCommandBuilder command in commandList)
                 {
                     applicationCommandProperties.Add(command.Build());
                 }
 
-                // Bulk overwrite the global application commands with the built command properties
                 await client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
+
+                _commandsRegisteredThisSession = true;
+
+                log.Info("Discord slash commands registered successfully.");
+            }
+            catch (RateLimitedException ex)
+            {
+                await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
+            }
+            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+            {
+                await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
             }
             catch (Exception exception)
             {
-                log.Error(exception.Message);
+                log.Error("Error registering Discord slash commands: " + exception.Message);
             }
         }
 
@@ -1235,30 +1460,71 @@ namespace DiscordBotPlugin
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task ConsoleOutputSend()
         {
+            const int MaxQueuedConsoleLines = 500;
+            const int DelayBetweenChannelSendsMs = 1100;
+
             while (settings != null &&
                    settings.MainSettings != null &&
                    settings.MainSettings.SendConsoleToDiscord &&
                    settings.MainSettings.BotActive)
             {
-                // Delay the execution for specified time
                 int timeToWait = settings.MainSettings.ConsoleBatchTimer * 1000;
 
-                if (consoleOutput.Count > 0)
+                try
                 {
-                    try
+                    if (client == null || client.ConnectionState != ConnectionState.Connected)
                     {
-                        consoleOutput = helper.SplitOutputIntoCodeBlocks(consoleOutput);
+                        log.Warning("Skipping console output send because Discord client is not connected.");
+                        await Task.Delay(timeToWait);
+                        continue;
+                    }
 
-                        // Get all guilds the bot is a member of, ensuring it's not null
-                        var guilds = client.Guilds;
+                    if (consoleOutput.Count > MaxQueuedConsoleLines)
+                    {
+                        int removeCount = consoleOutput.Count - MaxQueuedConsoleLines;
+                        consoleOutput.RemoveRange(0, removeCount);
+                        log.Warning($"Console output queue exceeded {MaxQueuedConsoleLines} entries. Dropped {removeCount} oldest entries to prevent Discord retry backlog.");
+                    }
 
-                        // Send the first item of console output messages to the specified channel in each guild
+                    if (consoleOutput.Count > 0)
+                    {
+                        List<string> batches = helper.SplitOutputIntoCodeBlocks(consoleOutput);
 
-                        string output = consoleOutput[0];
+                        if (batches.Count == 0)
+                        {
+                            consoleOutput.Clear();
+                            await Task.Delay(timeToWait);
+                            continue;
+                        }
+
+                        string output = batches[0];
+
+                        int consumedLines = 0;
+                        int consumedLength = 0;
+
+                        foreach (string line in consoleOutput)
+                        {
+                            int additionalLength = line.Length + Environment.NewLine.Length;
+
+                            if (consumedLength + additionalLength + 6 > 2000)
+                            {
+                                break;
+                            }
+
+                            consumedLength += additionalLength;
+                            consumedLines++;
+                        }
+
+                        if (consumedLines <= 0)
+                        {
+                            consumedLines = 1;
+                        }
+
+                        consoleOutput.RemoveRange(0, Math.Min(consumedLines, consoleOutput.Count));
 
                         if (string.IsNullOrWhiteSpace(output))
                         {
-                            consoleOutput.RemoveAt(0);
+                            await Task.Delay(timeToWait);
                             continue;
                         }
 
@@ -1267,36 +1533,60 @@ namespace DiscordBotPlugin
 
                         if (string.IsNullOrWhiteSpace(redacted))
                         {
-                            consoleOutput.RemoveAt(0);
+                            await Task.Delay(timeToWait);
                             continue;
                         }
 
                         string codeBlock = $"```{redacted}```";
 
-                        // Use LINQ to select non-null text channels
-                        var textChannels = (from SocketGuild guild in guilds
-                                                let eventChannel = GetEventChannel(guild.Id, settings.MainSettings.ConsoleToDiscordChannel)
-                                                where eventChannel != null
-                                                let textChannel = guild.GetTextChannel(eventChannel.Id)
-                                                where textChannel != null
-                                                select textChannel)?.ToList() ?? new List<SocketTextChannel>();
+                        var textChannels = (
+                            from SocketGuild guild in client.Guilds
+                            let eventChannel = GetEventChannel(guild.Id, settings.MainSettings.ConsoleToDiscordChannel)
+                            where eventChannel != null
+                            let textChannel = guild.GetTextChannel(eventChannel.Id)
+                            where textChannel != null
+                            select textChannel
+                        ).ToList();
 
-                            foreach (var textChannel in textChannels)
+                        foreach (var textChannel in textChannels)
+                        {
+                            try
                             {
                                 await textChannel.SendMessageAsync(codeBlock);
+                                await Task.Delay(DelayBetweenChannelSendsMs);
                             }
-
-                            consoleOutput.RemoveAt(0);
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error(ex.Message);
+                            catch (RateLimitedException ex)
+                            {
+                                await HandleDiscordRateLimitAsync(ex, $"ConsoleOutputSend channel {textChannel.Name} ({textChannel.Id})");
+                            }
+                            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                            {
+                                await HandleDiscordRateLimitAsync(ex, $"ConsoleOutputSend channel {textChannel.Name} ({textChannel.Id})");
+                            }
+                            catch (Exception sendException)
+                            {
+                                log.Error($"Failed to send console output to Discord channel {textChannel.Name} ({textChannel.Id}). Dropping this batch to prevent retry storm. Error: {sendException.Message}");
+                            }
+                        }
                     }
                 }
+                catch (RateLimitedException ex)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "ConsoleOutputSend outer loop");
+                }
+                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "ConsoleOutputSend outer loop");
+                }
+                catch (Exception ex)
+                {
+                    log.Error("Console output loop error: " + ex.Message);
+                }
 
-                // Delay the execution for specified time
                 await Task.Delay(timeToWait);
             }
+
+            _consoleLoopStarted = false;
         }
 
 
