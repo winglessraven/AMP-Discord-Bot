@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using static DiscordBotPlugin.PluginMain;
 
@@ -97,12 +98,20 @@ namespace DiscordBotPlugin
             }
 
             embed.AddField("Server Name", "```" + settings?.MainSettings?.ServerDisplayName + "```", false);
+
             string connectionURL = settings.MainSettings.ServerConnectionURL;
-            if (connectionURL.ToLower().Contains("{publicip}"))
+
+            if (!string.IsNullOrWhiteSpace(connectionURL) &&
+                connectionURL.ToLower().Contains("{publicip}"))
             {
                 string ipAddress = await helper.GetExternalIpAddressAsync();
-                connectionURL = connectionURL.ToLower().Replace("{publicip}", ipAddress);
+
+                if (!string.IsNullOrWhiteSpace(ipAddress))
+                {
+                    connectionURL = connectionURL.ToLower().Replace("{publicip}", ipAddress);
+                }
             }
+
             embed.AddField("Server IP", "```" + connectionURL + "```", false);
 
             if (!string.IsNullOrEmpty(settings?.MainSettings?.ServerPassword))
@@ -126,9 +135,11 @@ namespace DiscordBotPlugin
 
             if (settings?.MainSettings?.ShowOnlinePlayers == true)
             {
-                List<string> onlinePlayerNames = hasSimpleUserList.Users.Where(u => !string.IsNullOrEmpty(u.Name)).Select(u => u.Name).ToList();
+                List<string> onlinePlayerNames = hasSimpleUserList.Users
+                    .Where(u => !string.IsNullOrEmpty(u.Name))
+                    .Select(u => u.Name)
+                    .ToList();
 
-                //sort alphabetically
                 onlinePlayerNames.Sort(StringComparer.OrdinalIgnoreCase);
 
                 if (onlinePlayerNames.Count > 0)
@@ -148,7 +159,9 @@ namespace DiscordBotPlugin
                 embed.AddField("Top " + settings.MainSettings.PlaytimeLeaderboardPlaces + " Players by Play Time", leaderboard, false);
             }
 
-            if (settings?.GameSpecificSettings?.ValheimJoinCode == true && !string.IsNullOrEmpty(valheimJoinCode) && application.State == ApplicationState.Ready)
+            if (settings?.GameSpecificSettings?.ValheimJoinCode == true &&
+                !string.IsNullOrEmpty(valheimJoinCode) &&
+                application.State == ApplicationState.Ready)
             {
                 embed.AddField("Server Join Code", "```" + valheimJoinCode + "```");
             }
@@ -158,33 +171,46 @@ namespace DiscordBotPlugin
                 embed.AddField(settings.MainSettings.AdditionalEmbedFieldTitle, settings.MainSettings.AdditionalEmbedFieldText);
             }
 
-            embed.WithFooter(settings?.MainSettings?.BotTagline).WithCurrentTimestamp();
+            embed.WithFooter(settings?.MainSettings?.BotTagline);
+
+            // Keep the info panel "last updated" time visible.
+            embed.WithCurrentTimestamp();
 
             var builder = new ComponentBuilder();
 
             if (settings?.MainSettings?.ShowStartButton == true)
             {
-                builder.WithButton("Start", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success, disabled: application.State == ApplicationState.Ready || application.State == ApplicationState.Starting || application.State == ApplicationState.Installing);
+                builder.WithButton("Start", "start-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Success,
+                    disabled: application.State == ApplicationState.Ready ||
+                              application.State == ApplicationState.Starting ||
+                              application.State == ApplicationState.Installing);
             }
 
             if (settings?.MainSettings?.ShowStopButton == true)
             {
-                builder.WithButton("Stop", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed);
+                builder.WithButton("Stop", "stop-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger,
+                    disabled: application.State == ApplicationState.Stopped ||
+                              application.State == ApplicationState.Failed);
             }
 
             if (settings?.MainSettings?.ShowRestartButton == true)
             {
-                builder.WithButton("Restart", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed);
+                builder.WithButton("Restart", "restart-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger,
+                    disabled: application.State == ApplicationState.Stopped ||
+                              application.State == ApplicationState.Failed);
             }
 
             if (settings?.MainSettings?.ShowKillButton == true)
             {
-                builder.WithButton("Kill", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger, disabled: application.State == ApplicationState.Stopped || application.State == ApplicationState.Failed);
+                builder.WithButton("Kill", "kill-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Danger,
+                    disabled: application.State == ApplicationState.Stopped ||
+                              application.State == ApplicationState.Failed);
             }
 
             if (settings?.MainSettings?.ShowUpdateButton == true)
             {
-                builder.WithButton("Update", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary, disabled: application.State == ApplicationState.Installing);
+                builder.WithButton("Update", "update-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Primary,
+                    disabled: application.State == ApplicationState.Installing);
             }
 
             if (settings?.MainSettings?.ShowManageButton == true)
@@ -204,55 +230,148 @@ namespace DiscordBotPlugin
 
             if (updateExisting)
             {
-                foreach (string details in settings?.MainSettings?.InfoMessageDetails ?? new List<string>())
+                if (settings?.MainSettings?.InfoMessageDetails == null ||
+                    settings.MainSettings.InfoMessageDetails.Count == 0)
+                {
+                    return;
+                }
+
+                List<string> invalidDetails = new List<string>();
+
+                foreach (string details in settings.MainSettings.InfoMessageDetails.ToList())
                 {
                     try
                     {
                         string[] split = details.Split('-');
-                        var existingMsg = await bot.client.GetGuild(Convert.ToUInt64(split[0])).GetTextChannel(Convert.ToUInt64(split[1])).GetMessageAsync(Convert.ToUInt64(split[2])) as IUserMessage;
 
-                        if (existingMsg != null)
+                        if (split.Length < 3)
                         {
-                            await existingMsg.ModifyAsync(x =>
+                            log.Warning($"Invalid info message details entry: {details}");
+                            invalidDetails.Add(details);
+                            continue;
+                        }
+
+                        if (!ulong.TryParse(split[0], out ulong guildId) ||
+                            !ulong.TryParse(split[1], out ulong channelId) ||
+                            !ulong.TryParse(split[2], out ulong messageId))
+                        {
+                            log.Warning($"Invalid info message details IDs: {details}");
+                            invalidDetails.Add(details);
+                            continue;
+                        }
+
+                        bool isButtonless = false;
+
+                        if (split.Length > 3)
+                        {
+                            bool.TryParse(split[3], out isButtonless);
+                        }
+
+                        var guild = bot.client.GetGuild(guildId);
+
+                        if (guild == null)
+                        {
+                            log.Warning($"Could not find guild {guildId} while updating info panel.");
+                            invalidDetails.Add(details);
+                            continue;
+                        }
+
+                        var textChannel = guild.GetTextChannel(channelId);
+
+                        if (textChannel == null)
+                        {
+                            log.Warning($"Could not find text channel {channelId} while updating info panel.");
+                            invalidDetails.Add(details);
+                            continue;
+                        }
+
+                        await textChannel.ModifyMessageAsync(messageId, message =>
+                        {
+                            message.Embed = embed.Build();
+
+                            if (!isButtonless)
                             {
-                                x.Embed = embed.Build();
-                                if (split.Length <= 3 || !split[3].ToString().Equals("True"))
-                                {
-                                    x.Components = builder.Build();
-                                }
-                            });
-                        }
-                        else
-                        {
-                            settings?.MainSettings?.InfoMessageDetails.Remove(details);
-                        }
+                                message.Components = builder.Build();
+                            }
+                        });
+                    }
+                    catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
+                    {
+                        log.Warning($"Info panel message no longer exists. Removing from settings: {details}");
+                        invalidDetails.Add(details);
+                    }
+                    catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                    {
+                        await bot.HandleDiscordRateLimitAsync(ex, $"GetServerInfo updateExisting info panel '{details}'");
+                    }
+                    catch (RateLimitedException ex)
+                    {
+                        await bot.HandleDiscordRateLimitAsync(ex, $"GetServerInfo updateExisting info panel '{details}'");
                     }
                     catch (Exception ex)
                     {
-                        log.Error($"Error updating message: {ex.Message}");
+                        log.Error($"Error updating info panel message '{details}': {ex.Message}");
                     }
+                }
+
+                if (invalidDetails.Count > 0)
+                {
+                    foreach (string invalidDetail in invalidDetails)
+                    {
+                        settings.MainSettings.InfoMessageDetails.Remove(invalidDetail);
+                    }
+
+                    config.Save(settings);
                 }
             }
             else
             {
-                var chnl = msg.Channel as SocketGuildChannel;
-                var guild = chnl?.Guild?.Id ?? 0;
-                var channelID = msg.Channel?.Id ?? 0;
+                if (msg?.Channel == null)
+                {
+                    log.Error("Cannot create info panel because slash command channel is null.");
+                    return;
+                }
 
-                //create the embed according to the request
-                if (Buttonless)
+                var chnl = msg.Channel as SocketGuildChannel;
+
+                if (chnl == null)
                 {
-                    var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
-                    log.Debug("Message ID: " + message.Id.ToString());
-                    settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                    log.Error("Cannot create info panel because command was not used in a guild channel.");
+                    return;
                 }
-                else
+
+                var guild = chnl.Guild.Id;
+                var channelID = msg.Channel.Id;
+
+                try
                 {
-                    var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
-                    log.Debug("Message ID: " + message.Id.ToString());
-                    settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                    if (Buttonless)
+                    {
+                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
+                        log.Debug("Message ID: " + message.Id.ToString());
+                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                    }
+                    else
+                    {
+                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
+                        log.Debug("Message ID: " + message.Id.ToString());
+                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                    }
+
+                    config.Save(settings);
                 }
-                config.Save(settings);
+                catch (RateLimitedException ex)
+                {
+                    await bot.HandleDiscordRateLimitAsync(ex, "GetServerInfo create info panel");
+                }
+                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                {
+                    await bot.HandleDiscordRateLimitAsync(ex, "GetServerInfo create info panel");
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"Error creating info panel message: {ex.Message}");
+                }
             }
         }
 
