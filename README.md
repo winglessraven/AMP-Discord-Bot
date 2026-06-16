@@ -186,5 +186,27 @@ When actioned, message is changed to show status and user is DM'd...
 
 <img width="554" height="39" alt="517427389-f7560ab5-b87b-4dd6-8f22-bb925f888e10" src="https://github.com/user-attachments/assets/cd683d15-ab81-4812-ad8c-c039a66c2257" />
 
+## Copyright and usage
+
+Copyright © winglessraven. All rights reserved.
+
+This repository is source-available and is not open-source software. The source code is made publicly available for inspection and reference only.
+
+Except where expressly permitted below, no permission is granted to copy, use, modify, redistribute, publish, sublicense, incorporate into another project, or distribute this software, its source code, compiled versions or derivative works without prior written permission from the copyright holder.
+
+GitHub users may view and fork this repository only to the extent permitted by GitHub’s Terms of Service.
+
+### Contributions
+
+Contributions to this project are welcome.
+
+You may fork and modify the source code for the purpose of developing and submitting a contribution to this repository. Development forks created for this purpose must not be used to publish releases, distribute compiled versions, or maintain an independently distributed modified version of the project without prior written permission.
+
+By submitting a pull request or other contribution, you confirm that you created the contribution or otherwise have the right to submit it. You retain copyright in your original contribution, but grant winglessrave a perpetual, worldwide, royalty-free, non-exclusive and irrevocable licence to use, reproduce, modify, incorporate, distribute and sublicense the contribution as part of this project.
+
+Submitting a contribution does not grant permission to redistribute the project, publish an independent modified version, or distribute compiled versions outside the contribution process.
+
+Contributions may be reviewed, modified or declined before being incorporated into the project.
+
 
 
