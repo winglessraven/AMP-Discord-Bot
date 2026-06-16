@@ -192,7 +192,9 @@ Copyright © winglessraven. All rights reserved.
 
 This repository is source-available and is not open-source software. The source code is made publicly available for inspection and reference only.
 
-Except where expressly permitted below, no permission is granted to copy, use, modify, redistribute, publish, sublicense, incorporate into another project, or distribute this software, its source code, compiled versions or derivative works without prior written permission from the copyright holder.
+Permission is granted to download, install and use official, unmodified releases of the software.
+
+Except where expressly permitted below, no permission is granted to modify, publish, redistribute, sublicense, incorporate any portion of the software into another project, or distribute its source code, modified versions, or derivative works without prior written permission from the copyright holder.
 
 GitHub users may view and fork this repository only to the extent permitted by GitHub’s Terms of Service.
 
