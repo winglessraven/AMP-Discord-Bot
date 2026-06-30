@@ -228,6 +228,12 @@ namespace DiscordBotPlugin
                 builder.WithButton("Whitelist Request", "whitelist-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
             }
 
+            var buttonlessWhitelist = new ComponentBuilder();
+            if(settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+            {
+                buttonlessWhitelist.WithButton("Whitelist Request", "whitelist-server-" + aMPInstanceInfo.InstanceId, ButtonStyle.Secondary);
+            }
+
             if (updateExisting)
             {
                 if (settings?.MainSettings?.InfoMessageDetails == null ||
@@ -293,6 +299,10 @@ namespace DiscordBotPlugin
                             {
                                 message.Components = builder.Build();
                             }
+                            else if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+                            {
+                                message.Components = buttonlessWhitelist.Build();
+                            }
                         });
                     }
                     catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
@@ -348,6 +358,12 @@ namespace DiscordBotPlugin
                     if (Buttonless)
                     {
                         var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
+                        log.Debug("Message ID: " + message.Id.ToString());
+                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                    }
+                    else if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+                    {
+                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: buttonlessWhitelist.Build());
                         log.Debug("Message ID: " + message.Id.ToString());
                         settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
                     }
