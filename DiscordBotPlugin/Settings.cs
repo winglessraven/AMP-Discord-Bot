@@ -100,6 +100,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Whitelist Request Button", "Toggle the whitelist request button visibility on the info panel (will only work for Minecraft instances)", false, Subcategory: "Buttons:radio_button_checked:3")]
             public bool ShowWhitelistButton = false;
 
+            [WebSetting("Display Whitelist Request Button On Buttonless Panel", "Include the whitelist request button on buttonless panels", false, Subcategory: "Buttons:radio_button_checked:3")]
+            public bool ShowWhitelistButtonOnButtonlessPanel = false;
+
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowOnlinePlayers = false;
 
