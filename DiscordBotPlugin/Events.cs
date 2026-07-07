@@ -253,6 +253,8 @@ namespace DiscordBotPlugin
                     hasSimpleUserList.UserLeaves -= UserLeaves;
                 }
             }
+
+            config.Save(settings);
         }
 
         /// <summary>
