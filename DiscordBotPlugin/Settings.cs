@@ -106,7 +106,7 @@ namespace DiscordBotPlugin
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowOnlinePlayers = false;
 
-            [WebSetting("Online Server Bot Presence Text", "Change the presence text when application is running, use {OnlinePlayers} and {MaximumPlayers} as variables", false, Subcategory: "Misc:more_vert:7")]
+            [WebSetting("Online Server Bot Presence Text", "Change the presence text when application is running, use {OnlinePlayers} and {MaximumPlayers} as variables. Custom variables can also be used - to do this create a 'BotVariables.json' file in the instance folder. Variable name is the key, result is the value, e.g. {test} would read '\"test\": \"result\"'", false, Subcategory: "Misc:more_vert:7")]
             public string OnlineBotPresence = "";
 
             [WebSetting("Change Displayed Status", "Replace the default AMP status with your own - key is the AMP value, value is the replacement - possible values listed on the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Changing-Application-State-Values-to-Custom-Text)", false, Subcategory: "Misc:more_vert:7")]
