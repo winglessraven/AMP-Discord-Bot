@@ -2,8 +2,11 @@
 using ModuleShared;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static DiscordBotPlugin.PluginMain;
 
@@ -52,10 +55,110 @@ namespace DiscordBotPlugin
             }
 
             string presence = settings.MainSettings.OnlineBotPresence;
+
+            // Built-in variables take priority.
             presence = presence.Replace("{OnlinePlayers}", onlinePlayers.ToString());
-            presence = presence.Replace("{MaximumPlayers}", maximumPlayers.ToString());
+            presence = presence.Replace("{MaximumPlayers}",maximumPlayers.ToString());
+
+            // Replace any remaining variables from BotVariables.json.
+            presence = ReplaceBotVariables(presence);
 
             return presence;
+        }
+
+        private static readonly Regex BotVariablePattern = new Regex(@"\{(?<name>[^{}]+)\}",RegexOptions.Compiled);
+
+        private Dictionary<string, string> ReadBotVariables()
+        {
+            var variables = new Dictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+
+            string filePath = Path.Combine(
+                Environment.CurrentDirectory,
+                "BotVariables.json");
+
+            if (!File.Exists(filePath))
+            {
+                log.Debug($"Bot variables file does not exist: {filePath}");
+                return variables;
+            }
+
+            try
+            {
+                using FileStream stream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete);
+
+                using JsonDocument document = JsonDocument.Parse(
+                    stream,
+                    new JsonDocumentOptions
+                    {
+                        AllowTrailingCommas = true,
+                        CommentHandling = JsonCommentHandling.Skip
+                    });
+
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    log.Error(
+                        $"BotVariables.json must contain a JSON object: {filePath}");
+
+                    return variables;
+                }
+
+                foreach (JsonProperty property in document.RootElement.EnumerateObject())
+                {
+                    string value = property.Value.ValueKind switch
+                    {
+                        JsonValueKind.String => property.Value.GetString() ?? string.Empty,
+                        JsonValueKind.Null => string.Empty,
+                        JsonValueKind.Number or
+                        JsonValueKind.True or
+                        JsonValueKind.False => property.Value.GetRawText(),
+
+                        _ => property.Value.GetRawText()
+                    };
+
+                    variables[property.Name] = value;
+                }
+            }
+            catch (JsonException ex)
+            {
+                log.Error(
+                    $"BotVariables.json contains invalid JSON: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                log.Error(
+                    $"Unable to read BotVariables.json: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.Error(
+                    $"Access denied when reading BotVariables.json: {ex.Message}");
+            }
+
+            return variables;
+        }
+
+        private string ReplaceBotVariables(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+            {
+                return input;
+            }
+
+            Dictionary<string, string> variables = ReadBotVariables();
+
+            return BotVariablePattern.Replace(input, match =>
+            {
+                string variableName = match.Groups["name"].Value;
+
+                return variables.TryGetValue(variableName, out string? value)
+                    ? value
+                    : match.Value;
+            });
         }
 
         public string GetPlayTimeLeaderBoard(int placesToShow, bool playerSpecific, string playerName, bool fullList, bool webPanel)
