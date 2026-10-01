@@ -858,7 +858,7 @@ namespace DiscordBotPlugin
                         log.Debug($"[CMD]] Permission check result for user {command.User.Username}: {hasServerPermission}");
                     }
 
-                    if (!hasServerPermission)
+                    if (!hasServerPermission && CommandRequiresRestrictedRole(commandName))
                     {
                         log.Warning($"[CMD] User {command.User.Username} lacks permission for command '{commandName}'. Responding with permission denied.");
                         await command.FollowupAsync("You do not have permission to use this command!", ephemeral: true);
@@ -1068,7 +1068,7 @@ namespace DiscordBotPlugin
                         log.Debug($"[CMD]] Permission check result for user {command.User.Username}: {hasServerPermission}");
                     }
 
-                    if (!hasServerPermission)
+                    if (!hasServerPermission && CommandRequiresRestrictedRole(commandName))
                     {
                         log.Warning($"[CMD] User {command.User.Username} lacks permission for command '{commandName}'. Responding with permission denied.");
                         await command.FollowupAsync("You do not have permission to use this command!", ephemeral: true);
@@ -1303,6 +1303,17 @@ namespace DiscordBotPlugin
                 log.Warning("Settings is null in HasServerPermission.");
                 return false;
             }
+        }
+
+
+        /// <summary>
+        /// Whether a slash command is gated by Restrict Functions to Discord Role.
+        /// Info (and show-playtime) stay available to everyone, matching the setting description.
+        /// </summary>
+        private static bool CommandRequiresRestrictedRole(string commandName)
+        {
+            return !string.Equals(commandName, "info", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(commandName, "show-playtime", StringComparison.OrdinalIgnoreCase);
         }
 
         public bool CanBotSendMessageInChannel(DiscordSocketClient client, ulong channelId)
