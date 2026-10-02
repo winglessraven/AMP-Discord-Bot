@@ -590,13 +590,35 @@ namespace DiscordBotPlugin
                     return;
                 }
 
-                var requester = guild.GetUser(requesterId);
+                // Requester may be in a different Discord than the approval channel
+                IUser? requester = guild.GetUser(requesterId)
+                    ?? bot?.client?.GetUser(requesterId);
 
-                if (requester == null)
+                if (requester == null && bot?.client != null)
                 {
-                    await arg.RespondAsync("Could not find the requester user.", ephemeral: true);
-                    return;
+                    foreach (var connectedGuild in bot.client.Guilds)
+                    {
+                        requester = connectedGuild.GetUser(requesterId);
+                        if (requester != null)
+                        {
+                            break;
+                        }
+                    }
                 }
+
+                if (requester == null && bot?.client != null)
+                {
+                    try
+                    {
+                        requester = await bot.client.Rest.GetUserAsync(requesterId);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Debug($"Could not REST-fetch whitelist requester {requesterId}: {ex.Message}");
+                    }
+                }
+
+                string requesterMention = requester?.Mention ?? $"<@{requesterId}>";
 
                 // -------------------------------------------------------------
                 // 3. Perform the Approve/Deny Action
@@ -626,7 +648,7 @@ namespace DiscordBotPlugin
                     .WithTitle("Minecraft Whitelist Request")
                     .WithColor(isApprove ? Color.Green : Color.Red)
                     .WithTimestamp(DateTimeOffset.UtcNow)
-                    .AddField("Discord User", requester.Mention, true)
+                    .AddField("Discord User", requesterMention, true)
                     .AddField("Minecraft Username", mcName, true)
                     .AddField("Server", serverName, true)
                     .AddField("Status", isApprove ? "✔️ Approved" : "❌ Denied", true)
@@ -645,17 +667,24 @@ namespace DiscordBotPlugin
                 // -------------------------------------------------------------
                 // 5. DM the requester
                 // -------------------------------------------------------------
-                try
+                if (requester != null)
                 {
-                    await requester.SendMessageAsync(
-                        isApprove
-                            ? $"🎉 Your whitelist request for **{mcName}** on **{serverName}** has been **approved**!"
-                            : $"❌ Your whitelist request for **{mcName}** on **{serverName}** has been **denied**."
-                    );
+                    try
+                    {
+                        await requester.SendMessageAsync(
+                            isApprove
+                                ? $"🎉 Your whitelist request for **{mcName}** on **{serverName}** has been **approved**!"
+                                : $"❌ Your whitelist request for **{mcName}** on **{serverName}** has been **denied**."
+                        );
+                    }
+                    catch
+                    {
+                        log.Warning($"Could not DM whitelist request result to {requester.Username}.");
+                    }
                 }
-                catch
+                else
                 {
-                    log.Warning($"Could not DM whitelist request result to {requester.Username}.");
+                    log.Warning($"Could not resolve whitelist requester {requesterId} for DM.");
                 }
 
                 // -------------------------------------------------------------

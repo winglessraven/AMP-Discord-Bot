@@ -150,7 +150,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Console to Discord Batch Timer|How long to wait between output batches (to reduce likelyhood of being rate limited)|
 |Console Discord Channel|Discord channel name to send console output to (if enabled)|
 |Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
-|Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled)|
+|Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled). May be in any Discord server the bot is in|
 |Whitelist Approval Role|Discord role that is allowed to approve whitelist requests|
 |Custom Whitelist Command|Custom whitelist command, if blank will use default `/whitelist add`. Enter without `/` (e.g. `globalwhitelist add`)|
 |Enable Web Panel|Enable the web panel. This will create a html file in a similar format to the Discord info panel for website embeds. Additional steps are required to map the html file to make it accessible. See the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Configure-the-Web-Panel)|
@@ -168,7 +168,7 @@ The `Discord Bot Game Specific` section is for game specific settings. These wil
 
 ## Whitelist Request Process (for Minecraft)
 Enable *Display Whitelist Request Button*
-Set Whitelist Request Channel (the channel to send whitelist requests to for approval)
+Set Whitelist Request Channel (the channel to send whitelist requests to for approval; can be in a different Discord server than the info panel, as long as the bot is in both)
 Set the Whitelist Approval Role (roles that can approve whitelist requests)
 If required, add custom whitelist command (if not default `/whitelist add [playername]`)
 
