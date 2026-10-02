@@ -11,7 +11,6 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static System.Windows.Forms.Design.AxImporter;
 
 namespace DiscordBotPlugin
 {
@@ -251,11 +250,11 @@ namespace DiscordBotPlugin
                     await client.SetActivityAsync(new CustomStatusGame(desiredActivity));
                 }
             }
-            catch (RateLimitedException ex)
+            catch (Discord.Net.RateLimitedException ex)
             {
                 await HandleDiscordRateLimitAsync(ex, "UpdatePresence");
             }
-            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+            catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
             {
                 await HandleDiscordRateLimitAsync(ex, "UpdatePresence");
             }
@@ -271,11 +270,11 @@ namespace DiscordBotPlugin
                         await client.SetStatusAsync(UserStatus.DoNotDisturb);
                     }
                 }
-                catch (RateLimitedException ex)
+                catch (Discord.Net.RateLimitedException ex)
                 {
                     await HandleDiscordRateLimitAsync(ex, "UpdatePresence fallback");
                 }
-                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                 {
                     await HandleDiscordRateLimitAsync(ex, "UpdatePresence fallback");
                 }
@@ -296,12 +295,12 @@ namespace DiscordBotPlugin
             string requestInfo = "Unknown request";
             string extraInfo = "";
 
-            if (exception is RateLimitedException rateLimitedException)
+            if (exception is Discord.Net.RateLimitedException rateLimitedException)
             {
                 requestInfo = rateLimitedException.Request?.ToString() ?? "Unknown request";
-                extraInfo = "Discord.Net RateLimitedException was thrown.";
+                extraInfo = "Discord.Net.RateLimitedException was thrown.";
             }
-            else if (exception is HttpException httpException)
+            else if (exception is Discord.Net.HttpException httpException)
             {
                 requestInfo = httpException.Request?.ToString() ?? "Unknown request";
                 extraInfo =
@@ -398,11 +397,11 @@ namespace DiscordBotPlugin
                         await UpdatePresence(null, null, false);
                     }
                 }
-                catch (RateLimitedException ex)
+                catch (Discord.Net.RateLimitedException ex)
                 {
                     await HandleDiscordRateLimitAsync(ex, "SetStatus");
                 }
-                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                 {
                     await HandleDiscordRateLimitAsync(ex, "SetStatus");
                 }
@@ -418,11 +417,11 @@ namespace DiscordBotPlugin
                             await client.SetStatusAsync(UserStatus.DoNotDisturb);
                         }
                     }
-                    catch (RateLimitedException ex)
+                    catch (Discord.Net.RateLimitedException ex)
                     {
                         await HandleDiscordRateLimitAsync(ex, "SetStatus fallback presence");
                     }
-                    catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                    catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                     {
                         await HandleDiscordRateLimitAsync(ex, "SetStatus fallback presence");
                     }
@@ -598,11 +597,11 @@ namespace DiscordBotPlugin
 
                 log.Info("Discord slash commands registered successfully.");
             }
-            catch (RateLimitedException ex)
+            catch (Discord.Net.RateLimitedException ex)
             {
                 await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
             }
-            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+            catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
             {
                 await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
             }
@@ -1555,11 +1554,11 @@ namespace DiscordBotPlugin
                                 await textChannel.SendMessageAsync(codeBlock);
                                 await Task.Delay(DelayBetweenChannelSendsMs);
                             }
-                            catch (RateLimitedException ex)
+                            catch (Discord.Net.RateLimitedException ex)
                             {
                                 await HandleDiscordRateLimitAsync(ex, $"ConsoleOutputSend channel {textChannel.Name} ({textChannel.Id})");
                             }
-                            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                            catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                             {
                                 await HandleDiscordRateLimitAsync(ex, $"ConsoleOutputSend channel {textChannel.Name} ({textChannel.Id})");
                             }
@@ -1570,11 +1569,11 @@ namespace DiscordBotPlugin
                         }
                     }
                 }
-                catch (RateLimitedException ex)
+                catch (Discord.Net.RateLimitedException ex)
                 {
                     await HandleDiscordRateLimitAsync(ex, "ConsoleOutputSend outer loop");
                 }
-                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                 {
                     await HandleDiscordRateLimitAsync(ex, "ConsoleOutputSend outer loop");
                 }
@@ -1930,20 +1929,35 @@ namespace DiscordBotPlugin
             if (modal.Data.CustomId != "whitelist_modal")
                 return;
 
-            // Extract the Minecraft username
-            string mcName = modal.Data.Components
-                .First(c => c.CustomId == "mc_name")
-                .Value;
+            var profile = helper.GetWhitelistProfile();
 
-            // Now call your method
-            await WhitelistRequest(modal, mcName);
+            // Accept both the new shared field id and the legacy Minecraft field id
+            string playerId = modal.Data.Components
+                .FirstOrDefault(c => c.CustomId == "player_id" || c.CustomId == "mc_name")
+                ?.Value
+                ?.Trim();
 
-            // Respond to modal
-            await modal.RespondAsync($"Whitelist request submitted for **{mcName}**!", ephemeral: true);
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                await modal.RespondAsync($"Please enter a {profile.PlayerIdLabel}.", ephemeral: true);
+                return;
+            }
+
+            if (profile.RequiresSteam64 && !helper.IsValidSteam64(playerId))
+            {
+                await modal.RespondAsync("Enter a valid 17-digit Steam64 ID (starts with 7656119).", ephemeral: true);
+                return;
+            }
+
+            await WhitelistRequest(modal, playerId, profile);
+
+            await modal.RespondAsync($"Whitelist request submitted for **{playerId}**!", ephemeral: true);
         }
 
-        public async Task WhitelistRequest(SocketModal modal, string mcName)
+        public async Task WhitelistRequest(SocketModal modal, string playerId, Helpers.WhitelistProfile? profile = null)
         {
+            profile ??= helper.GetWhitelistProfile();
+
             // Safety check: Make sure the channel exists
             if (settings.MainSettings.WhitelistRequestChannel == "")
             {
@@ -1985,25 +1999,25 @@ namespace DiscordBotPlugin
 
             // --- Build the embed ---
             var embed = new EmbedBuilder()
-                .WithTitle("Minecraft Whitelist Request")
+                .WithTitle(profile.RequestTitle)
                 .WithColor(Color.Blue)
                 .AddField("Discord User", modal.User.Mention, true)
-                .AddField("Minecraft Username", mcName, true)
+                .AddField(profile.PlayerIdLabel, playerId, true)
                 .AddField("Server", settings?.MainSettings?.ServerDisplayName, true)
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 .Build();
 
             // --- Buttons ---
-            // Encode the user + mcName + server into the button ID
+            // Encode the user + playerId + server into the button ID
             var components = new ComponentBuilder()
-                .WithButton("Approve", $"wl_approve:{modal.User.Id}:{mcName}:{serverName}", ButtonStyle.Success)
-                .WithButton("Deny", $"wl_deny:{modal.User.Id}:{mcName}:{serverName}", ButtonStyle.Danger)
+                .WithButton("Approve", $"wl_approve:{modal.User.Id}:{playerId}:{serverName}", ButtonStyle.Success)
+                .WithButton("Deny", $"wl_deny:{modal.User.Id}:{playerId}:{serverName}", ButtonStyle.Danger)
                 .Build();
 
             // Post to the request channel
             await channel.SendMessageAsync(embed: embed, components: components);
 
-            log.Info($"Whitelist request created for {modal.User.Username} ({mcName}) on server {serverName}.");
+            log.Info($"Whitelist request created for {modal.User.Username} ({playerId}) on server {serverName}.");
         }
     }
 }

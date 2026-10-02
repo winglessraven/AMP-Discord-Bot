@@ -458,5 +458,93 @@ namespace DiscordBotPlugin
                 }
             }
         }
+
+        /// <summary>
+        /// Whitelist request metadata derived from settings (command template and Discord UI labels).
+        /// </summary>
+        public class WhitelistProfile
+        {
+            public string RequestTitle { get; set; }
+            public string PlayerIdLabel { get; set; }
+            public string PlayerIdPlaceholder { get; set; }
+            public bool RequiresSteam64 { get; set; }
+        }
+
+        private const string DefaultWhitelistCommandPrefix = "whitelist add";
+
+        public bool IsSteamIdWhitelistType()
+        {
+            string type = settings?.MainSettings?.WhitelistPlayerIdType;
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                return false;
+            }
+
+            type = type.Trim();
+            return type.Equals("SteamID", StringComparison.OrdinalIgnoreCase)
+                || type.Equals("Steam ID", StringComparison.OrdinalIgnoreCase)
+                || type.Equals("steamid", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public WhitelistProfile GetWhitelistProfile()
+        {
+            if (IsSteamIdWhitelistType())
+            {
+                return new WhitelistProfile
+                {
+                    RequestTitle = "Whitelist Request",
+                    PlayerIdLabel = "Steam ID",
+                    PlayerIdPlaceholder = "7656119...",
+                    RequiresSteam64 = true
+                };
+            }
+
+            return new WhitelistProfile
+            {
+                RequestTitle = "Whitelist Request",
+                PlayerIdLabel = "Username",
+                PlayerIdPlaceholder = "Your username",
+                RequiresSteam64 = false
+            };
+        }
+
+        public string GetWhitelistConsoleCommand(string playerId)
+        {
+            string commandPrefix = settings?.MainSettings?.CustomWhitelistCommand;
+            if (string.IsNullOrWhiteSpace(commandPrefix))
+            {
+                commandPrefix = DefaultWhitelistCommandPrefix;
+            }
+
+            commandPrefix = commandPrefix.Trim();
+            playerId = playerId?.Trim() ?? "";
+
+            // If an older config still uses [user], substitute it; otherwise append the ID.
+            const string userPlaceholder = "[user]";
+            int placeholderIndex = commandPrefix.IndexOf(userPlaceholder, StringComparison.OrdinalIgnoreCase);
+            if (placeholderIndex >= 0)
+            {
+                return commandPrefix.Remove(placeholderIndex, userPlaceholder.Length)
+                    .Insert(placeholderIndex, playerId);
+            }
+
+            return $"{commandPrefix} {playerId}".Trim();
+        }
+
+        /// <summary>
+        /// Validates a Steam64 account ID (17 digits starting with 7656119).
+        /// </summary>
+        public bool IsValidSteam64(string steamId)
+        {
+            if (string.IsNullOrWhiteSpace(steamId))
+            {
+                return false;
+            }
+
+            steamId = steamId.Trim();
+            return steamId.Length == 17
+                && steamId.StartsWith("7656119", StringComparison.Ordinal)
+                && steamId.All(char.IsDigit);
+        }
     }
 }

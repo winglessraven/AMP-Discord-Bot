@@ -305,16 +305,16 @@ namespace DiscordBotPlugin
                             }
                         });
                     }
-                    catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
+                    catch (Discord.Net.HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
                     {
                         log.Warning($"Info panel message no longer exists. Removing from settings: {details}");
                         invalidDetails.Add(details);
                     }
-                    catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                    catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                     {
                         await bot.HandleDiscordRateLimitAsync(ex, $"GetServerInfo updateExisting info panel '{details}'");
                     }
-                    catch (RateLimitedException ex)
+                    catch (Discord.Net.RateLimitedException ex)
                     {
                         await bot.HandleDiscordRateLimitAsync(ex, $"GetServerInfo updateExisting info panel '{details}'");
                     }
@@ -376,11 +376,11 @@ namespace DiscordBotPlugin
 
                     config.Save(settings);
                 }
-                catch (RateLimitedException ex)
+                catch (Discord.Net.RateLimitedException ex)
                 {
                     await bot.HandleDiscordRateLimitAsync(ex, "GetServerInfo create info panel");
                 }
-                catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
                 {
                     await bot.HandleDiscordRateLimitAsync(ex, "GetServerInfo create info panel");
                 }
@@ -486,10 +486,11 @@ namespace DiscordBotPlugin
 
             if (buttonId == "whitelist-server")
             {
+                var profile = helper.GetWhitelistProfile();
                 var modal = new ModalBuilder()
-                        .WithTitle("Minecraft Whitelist Request")
+                        .WithTitle(profile.RequestTitle)
                         .WithCustomId("whitelist_modal")
-                        .AddTextInput("Minecraft Username", "mc_name", placeholder: "Your MC username", required: true);
+                        .AddTextInput(profile.PlayerIdLabel, "player_id", placeholder: profile.PlayerIdPlaceholder, required: true);
                 await arg.RespondWithModalAsync(modal.Build());
                 return;
             }
@@ -567,8 +568,8 @@ namespace DiscordBotPlugin
                 // -------------------------------------------------------------
                 // 2. Parse button data
                 // Button format:
-                // wl_approve:<userId>:<mcName>:<serverName>
-                // wl_deny:<userId>:<mcName>:<serverName>
+                // wl_approve:<userId>:<playerId>:<serverName>
+                // wl_deny:<userId>:<playerId>:<serverName>
                 // -------------------------------------------------------------
                 var parts = arg.Data.CustomId.Split(':');
                 if (parts.Length < 4)
@@ -579,7 +580,7 @@ namespace DiscordBotPlugin
 
                 bool isApprove = parts[0] == "wl_approve";
                 ulong requesterId = ulong.Parse(parts[1]);
-                string mcName = parts[2];
+                string playerId = parts[2];
                 string serverName = parts[3];
 
                 var guild = (arg.Channel as SocketGuildChannel)?.Guild;
@@ -598,36 +599,33 @@ namespace DiscordBotPlugin
                     return;
                 }
 
+                var profile = helper.GetWhitelistProfile();
+
                 // -------------------------------------------------------------
                 // 3. Perform the Approve/Deny Action
                 // -------------------------------------------------------------
                 if (isApprove)
                 {
-                    string command = "whitelist add " + mcName;
-                    if (settings.MainSettings.CustomWhitelistCommand != "")
-                    {
-                        command = settings.MainSettings.CustomWhitelistCommand + " " + mcName;
-                    }
+                    string command = helper.GetWhitelistConsoleCommand(playerId);
 
-                        IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+                    IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
                     writeableConsole?.WriteLine(command);
-                    log.Info($"Whitelist approved: {mcName} by {staffUser.Username}");
+                    log.Info($"Whitelist approved: {playerId} by {staffUser.Username}");
                 }
                 else
                 {
-                    log.Info($"Whitelist denied: {mcName} by {staffUser.Username}");
+                    log.Info($"Whitelist denied: {playerId} by {staffUser.Username}");
                 }
 
                 // -------------------------------------------------------------
                 // 4. Update the message embed
                 // -------------------------------------------------------------
-                var originalEmbed = arg.Message.Embeds.FirstOrDefault();
                 var updatedEmbed = new EmbedBuilder()
-                    .WithTitle("Minecraft Whitelist Request")
+                    .WithTitle(profile.RequestTitle)
                     .WithColor(isApprove ? Color.Green : Color.Red)
                     .WithTimestamp(DateTimeOffset.UtcNow)
                     .AddField("Discord User", requester.Mention, true)
-                    .AddField("Minecraft Username", mcName, true)
+                    .AddField(profile.PlayerIdLabel, playerId, true)
                     .AddField("Server", serverName, true)
                     .AddField("Status", isApprove ? "✔️ Approved" : "❌ Denied", true)
                     .AddField("Staff", staffUser.Mention, true)
@@ -649,8 +647,8 @@ namespace DiscordBotPlugin
                 {
                     await requester.SendMessageAsync(
                         isApprove
-                            ? $"🎉 Your whitelist request for **{mcName}** on **{serverName}** has been **approved**!"
-                            : $"❌ Your whitelist request for **{mcName}** on **{serverName}** has been **denied**."
+                            ? $"🎉 Your whitelist request for **{playerId}** on **{serverName}** has been **approved**!"
+                            : $"❌ Your whitelist request for **{playerId}** on **{serverName}** has been **denied**."
                     );
                 }
                 catch
