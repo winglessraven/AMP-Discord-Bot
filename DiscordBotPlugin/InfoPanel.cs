@@ -567,7 +567,7 @@ namespace DiscordBotPlugin
 
                 // -------------------------------------------------------------
                 // 2. Parse button data
-                // Button format:
+                // Button format (values URL-encoded so ':' in IDs is safe):
                 // wl_approve:<userId>:<playerId>:<serverName>
                 // wl_deny:<userId>:<playerId>:<serverName>
                 // -------------------------------------------------------------
@@ -579,9 +579,9 @@ namespace DiscordBotPlugin
                 }
 
                 bool isApprove = parts[0] == "wl_approve";
-                ulong requesterId = ulong.Parse(parts[1]);
-                string playerId = parts[2];
-                string serverName = parts[3];
+                ulong requesterId = ulong.Parse(Uri.UnescapeDataString(parts[1]));
+                string playerId = Uri.UnescapeDataString(parts[2]);
+                string serverName = Uri.UnescapeDataString(parts[3]);
 
                 var guild = (arg.Channel as SocketGuildChannel)?.Guild;
 

@@ -471,19 +471,12 @@ namespace DiscordBotPlugin
         }
 
         private const string DefaultWhitelistCommandPrefix = "whitelist add";
+        private const string PlayerPlaceholder = "{player}";
+        private const string LegacyUserPlaceholder = "[user]";
 
         public bool IsSteamIdWhitelistType()
         {
-            string type = settings?.MainSettings?.WhitelistPlayerIdType;
-            if (string.IsNullOrWhiteSpace(type))
-            {
-                return false;
-            }
-
-            type = type.Trim();
-            return type.Equals("SteamID", StringComparison.OrdinalIgnoreCase)
-                || type.Equals("Steam ID", StringComparison.OrdinalIgnoreCase)
-                || type.Equals("steamid", StringComparison.OrdinalIgnoreCase);
+            return settings?.MainSettings?.WhitelistPlayerIdType == WhitelistPlayerIdType.SteamID;
         }
 
         public WhitelistProfile GetWhitelistProfile()
@@ -510,25 +503,40 @@ namespace DiscordBotPlugin
 
         public string GetWhitelistConsoleCommand(string playerId)
         {
-            string commandPrefix = settings?.MainSettings?.CustomWhitelistCommand;
-            if (string.IsNullOrWhiteSpace(commandPrefix))
+            string commandTemplate = settings?.MainSettings?.CustomWhitelistCommand;
+            if (string.IsNullOrWhiteSpace(commandTemplate))
             {
-                commandPrefix = DefaultWhitelistCommandPrefix;
+                commandTemplate = DefaultWhitelistCommandPrefix;
             }
 
-            commandPrefix = commandPrefix.Trim();
+            commandTemplate = commandTemplate.Trim();
             playerId = playerId?.Trim() ?? "";
 
-            // If an older config still uses [user], substitute it; otherwise append the ID.
-            const string userPlaceholder = "[user]";
-            int placeholderIndex = commandPrefix.IndexOf(userPlaceholder, StringComparison.OrdinalIgnoreCase);
-            if (placeholderIndex >= 0)
+            // Prefer {player}; fall back to legacy [user]; otherwise append the ID.
+            if (TryReplacePlaceholder(commandTemplate, PlayerPlaceholder, playerId, out string withPlayer))
             {
-                return commandPrefix.Remove(placeholderIndex, userPlaceholder.Length)
-                    .Insert(placeholderIndex, playerId);
+                return withPlayer;
             }
 
-            return $"{commandPrefix} {playerId}".Trim();
+            if (TryReplacePlaceholder(commandTemplate, LegacyUserPlaceholder, playerId, out string withLegacy))
+            {
+                return withLegacy;
+            }
+
+            return $"{commandTemplate} {playerId}".Trim();
+        }
+
+        private static bool TryReplacePlaceholder(string template, string placeholder, string value, out string result)
+        {
+            int index = template.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+            {
+                result = template;
+                return false;
+            }
+
+            result = template.Remove(index, placeholder.Length).Insert(index, value);
+            return true;
         }
 
         /// <summary>

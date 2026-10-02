@@ -2008,10 +2008,13 @@ namespace DiscordBotPlugin
                 .Build();
 
             // --- Buttons ---
-            // Encode the user + playerId + server into the button ID
+            // URL-encode values so IDs with ':' (e.g. STEAM_0:1:12345) survive Split(':') parsing
+            string encodedUserId = Uri.EscapeDataString(modal.User.Id.ToString());
+            string encodedPlayerId = Uri.EscapeDataString(playerId);
+            string encodedServerName = Uri.EscapeDataString(serverName ?? "");
             var components = new ComponentBuilder()
-                .WithButton("Approve", $"wl_approve:{modal.User.Id}:{playerId}:{serverName}", ButtonStyle.Success)
-                .WithButton("Deny", $"wl_deny:{modal.User.Id}:{playerId}:{serverName}", ButtonStyle.Danger)
+                .WithButton("Approve", $"wl_approve:{encodedUserId}:{encodedPlayerId}:{encodedServerName}", ButtonStyle.Success)
+                .WithButton("Deny", $"wl_deny:{encodedUserId}:{encodedPlayerId}:{encodedServerName}", ButtonStyle.Danger)
                 .Build();
 
             // Post to the request channel

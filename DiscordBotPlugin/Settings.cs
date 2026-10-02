@@ -155,11 +155,11 @@ namespace DiscordBotPlugin
             [WebSetting("Whitelist Approval Role", "Discord role that is allowed to approve whitelist requests", false, Subcategory: "Logging:output:4")]
             public string WhitelistApprovalRole = "";
 
-            [WebSetting("Custom Whitelist Command", "Console command prefix to run on approval. The player ID is always appended (e.g. `whitelist add` or `addsteamid`). If blank, defaults to `whitelist add`.", false, Subcategory: "Logging:output:4")]
+            [WebSetting("Custom Whitelist Command", "Console command to run on approval. Use `{player}` where the ID belongs (e.g. `whitelist {player} true`); if omitted, the ID is appended (e.g. `addsteamid`). Do not include a leading `/` — AMP handles that. Blank defaults to `whitelist add`.", false, Subcategory: "Logging:output:4")]
             public string CustomWhitelistCommand = "";
 
-            [WebSetting("Whitelist Player ID Type", "What players should enter in the whitelist request modal: `Username` (default) or `SteamID` (validates 17-digit Steam64 IDs starting with 7656119)", false, Subcategory: "Logging:output:4")]
-            public string WhitelistPlayerIdType = "Username";
+            [WebSetting("Whitelist Player ID Type", "What players should enter in the whitelist request modal. SteamID validates 17-digit Steam64 IDs starting with 7656119.", false, Subcategory: "Logging:output:4")]
+            public WhitelistPlayerIdType WhitelistPlayerIdType = WhitelistPlayerIdType.Username;
 
             [WebSetting("Discord Debug Mode", "Enable verbose logging on the Discord bot for debugging", false, Subcategory: "Discord Config:settings:1")]
             public bool DiscordDebugMode = false;
@@ -281,5 +281,14 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotCommandOptions CommandSettings = new DiscordBotCommandOptions();
+    }
+
+    /// <summary>
+    /// Identifier type collected by the whitelist request modal.
+    /// </summary>
+    public enum WhitelistPlayerIdType
+    {
+        Username,
+        SteamID
     }
 }
