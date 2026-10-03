@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DiscordBotPlugin
@@ -30,7 +31,8 @@ namespace DiscordBotPlugin
         private bool _consoleLoopStarted = false;
         private bool _webPanelLoopStarted = false;
         private bool _statusRefreshInProgress = false;
-        private bool _commandsRegisteredThisSession = false;
+        private readonly SemaphoreSlim _commandRegistrationLock = new SemaphoreSlim(1, 1);
+        private string _lastRegisteredCommandSignature = null;
         private bool _connectInProgress = false;
 
         private DateTime _lastRateLimitLogUtc = DateTime.MinValue;
@@ -446,169 +448,333 @@ namespace DiscordBotPlugin
         }
 
         /// <summary>
-        /// Sets up and registers application commands for the client.
+        /// Handles the Discord Ready event and synchronizes the currently enabled slash commands.
         /// </summary>
         public async Task ClientReady()
         {
-            if (_commandsRegisteredThisSession)
+            await SyncSlashCommandsAsync();
+        }
+
+        /// <summary>
+        /// Synchronizes Discord slash command registration with the current command settings.
+        /// Unchanged command settings are ignored so unrelated AMP setting changes do not cause
+        /// unnecessary Discord bulk-overwrite requests.
+        /// </summary>
+        public async Task SyncSlashCommandsAsync()
+        {
+            if (!settings.MainSettings.BotActive)
             {
-                log.Info("Discord client ready. Slash command registration already completed this session; skipping bulk overwrite.");
                 return;
             }
 
-            List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
-            List<SlashCommandBuilder> commandList = new List<SlashCommandBuilder>();
-
-            if (settings.MainSettings.RemoveBotName)
+            if (client == null || client.ConnectionState != ConnectionState.Connected)
             {
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("info")
-                    .WithDescription("Create the Server Info Panel")
-                    .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("start-server")
-                    .WithDescription("Start the Server"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("stop-server")
-                    .WithDescription("Stop the Server"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("restart-server")
-                    .WithDescription("Restart the Server"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("kill-server")
-                    .WithDescription("Kill the Server"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("update-server")
-                    .WithDescription("Update the Server"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("show-playtime")
-                    .WithDescription("Show the Playtime Leaderboard")
-                    .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("console")
-                    .WithDescription("Send a Console Command to the Application")
-                    .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("full-playtime-list")
-                    .WithDescription("Full Playtime List")
-                    .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("take-backup")
-                    .WithDescription("Take a backup of the instance"));
-
-                commandList.Add(new SlashCommandBuilder()
-                    .WithName("remove-playtime")
-                    .WithDescription("Remove Playtime (all or specific player)")
-                    .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
-                    .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
+                log.Debug("Skipping slash command sync because the Discord client is not connected.");
+                return;
             }
-            else
+
+            if (!settings.MainSettings.RemoveBotName && client.CurrentUser == null)
             {
-                if (client != null && client.CurrentUser != null)
-                {
-                    string botName = client.CurrentUser.Username.ToLower();
-                    botName = Regex.Replace(botName, "[^a-zA-Z0-9]", string.Empty);
-
-                    log.Info("Base command for bot: " + botName);
-
-                    SlashCommandBuilder baseCommand = new SlashCommandBuilder()
-                        .WithName(botName)
-                        .WithDescription("Base bot command");
-
-                    baseCommand.AddOption(new SlashCommandOptionBuilder()
-                        .WithName("info")
-                        .WithDescription("Create the Server Info Panel")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("start-server")
-                        .WithDescription("Start the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("stop-server")
-                        .WithDescription("Stop the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("restart-server")
-                        .WithDescription("Restart the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("kill-server")
-                        .WithDescription("Kill the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("update-server")
-                        .WithDescription("Update the Server")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("show-playtime")
-                        .WithDescription("Show the Playtime Leaderboard")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("console")
-                        .WithDescription("Send a Console Command to the Application")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("full-playtime-list")
-                        .WithDescription("Full Playtime List")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("take-backup")
-                        .WithDescription("Take a backup of the instance")
-                        .WithType(ApplicationCommandOptionType.SubCommand))
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("remove-playtime")
-                        .WithDescription("Remove Playtime (all or specific player)")
-                        .WithType(ApplicationCommandOptionType.SubCommand)
-                        .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
-                        .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
-
-                    commandList.Add(baseCommand);
-                }
-                else
-                {
-                    log.Error("Client or CurrentUser is null in ClientReady method.");
-                    return;
-                }
+                log.Warning("Skipping slash command sync because the Discord client user is not available yet.");
+                return;
             }
+
+            await _commandRegistrationLock.WaitAsync();
 
             try
             {
-                foreach (SlashCommandBuilder command in commandList)
+                string registrationSignature = GetSlashCommandRegistrationSignature();
+
+                if (string.Equals(_lastRegisteredCommandSignature, registrationSignature, StringComparison.Ordinal))
                 {
-                    applicationCommandProperties.Add(command.Build());
+                    log.Debug("Slash command registration already matches the current settings; no Discord update required.");
+                    return;
                 }
 
-                await client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
+                List<ApplicationCommandProperties> applicationCommandProperties = new List<ApplicationCommandProperties>();
+                List<SlashCommandBuilder> commandList = new List<SlashCommandBuilder>();
 
-                _commandsRegisteredThisSession = true;
+                if (settings.MainSettings.RemoveBotName)
+                {
+                    if (settings.CommandSettings.EnableInfo)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("info")
+                            .WithDescription("Create the Server Info Panel")
+                            .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false));
+                    }
 
-                log.Info("Discord slash commands registered successfully.");
-            }
-            catch (Discord.Net.RateLimitedException ex)
-            {
-                await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
-            }
-            catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
-            {
-                await HandleDiscordRateLimitAsync(ex, "ClientReady slash command registration");
+                    if (settings.CommandSettings.EnableStartServer)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("start-server")
+                            .WithDescription("Start the Server"));
+                    }
+
+                    if (settings.CommandSettings.EnableStopServer)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("stop-server")
+                            .WithDescription("Stop the Server"));
+                    }
+
+                    if (settings.CommandSettings.EnableRestartServer)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("restart-server")
+                            .WithDescription("Restart the Server"));
+                    }
+
+                    if (settings.CommandSettings.EnableKillServer)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("kill-server")
+                            .WithDescription("Kill the Server"));
+                    }
+
+                    if (settings.CommandSettings.EnableUpdateServer)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("update-server")
+                            .WithDescription("Update the Server"));
+                    }
+
+                    if (settings.CommandSettings.EnableShowPlaytime)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("show-playtime")
+                            .WithDescription("Show the Playtime Leaderboard")
+                            .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false));
+                    }
+
+                    if (settings.CommandSettings.EnableConsole)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("console")
+                            .WithDescription("Send a Console Command to the Application")
+                            .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true));
+                    }
+
+                    if (settings.CommandSettings.EnableFullPlaytimeList)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("full-playtime-list")
+                            .WithDescription("Full Playtime List")
+                            .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+                    }
+
+                    if (settings.CommandSettings.EnableTakeBackup)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("take-backup")
+                            .WithDescription("Take a backup of the instance"));
+                    }
+
+                    if (settings.CommandSettings.EnableRemovePlaytime)
+                    {
+                        commandList.Add(new SlashCommandBuilder()
+                            .WithName("remove-playtime")
+                            .WithDescription("Remove Playtime (all or specific player)")
+                            .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
+                            .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
+                    }
+                }
+                else
+                {
+                    if (client != null && client.CurrentUser != null)
+                    {
+                        string botName = client.CurrentUser.Username.ToLower();
+                        botName = Regex.Replace(botName, "[^a-zA-Z0-9]", string.Empty);
+
+                        log.Info("Base command for bot: " + botName);
+
+                        SlashCommandBuilder baseCommand = new SlashCommandBuilder()
+                            .WithName(botName)
+                            .WithDescription("Base bot command");
+
+                        int enabledSubcommandCount = 0;
+
+                        if (settings.CommandSettings.EnableInfo)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("info")
+                                .WithDescription("Create the Server Info Panel")
+                                .WithType(ApplicationCommandOptionType.SubCommand)
+                                .AddOption("nobuttons", ApplicationCommandOptionType.Boolean, "Hide buttons for this panel?", isRequired: false));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableStartServer)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("start-server")
+                                .WithDescription("Start the Server")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableStopServer)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("stop-server")
+                                .WithDescription("Stop the Server")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableRestartServer)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("restart-server")
+                                .WithDescription("Restart the Server")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableKillServer)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("kill-server")
+                                .WithDescription("Kill the Server")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableUpdateServer)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("update-server")
+                                .WithDescription("Update the Server")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableShowPlaytime)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("show-playtime")
+                                .WithDescription("Show the Playtime Leaderboard")
+                                .WithType(ApplicationCommandOptionType.SubCommand)
+                                .AddOption("playername", ApplicationCommandOptionType.String, "Get playtime for a specific player", isRequired: false));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableConsole)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("console")
+                                .WithDescription("Send a Console Command to the Application")
+                                .WithType(ApplicationCommandOptionType.SubCommand)
+                                .AddOption("value", ApplicationCommandOptionType.String, "Command text", isRequired: true));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableFullPlaytimeList)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("full-playtime-list")
+                                .WithDescription("Full Playtime List")
+                                .WithType(ApplicationCommandOptionType.SubCommand)
+                                .AddOption("playername", ApplicationCommandOptionType.String, "Get info for a specific player", isRequired: false));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableTakeBackup)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("take-backup")
+                                .WithDescription("Take a backup of the instance")
+                                .WithType(ApplicationCommandOptionType.SubCommand));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (settings.CommandSettings.EnableRemovePlaytime)
+                        {
+                            baseCommand.AddOption(new SlashCommandOptionBuilder()
+                                .WithName("remove-playtime")
+                                .WithDescription("Remove Playtime (all or specific player)")
+                                .WithType(ApplicationCommandOptionType.SubCommand)
+                                .AddOption("all", ApplicationCommandOptionType.Boolean, "Remove all playtime data?", isRequired: true)
+                                .AddOption("playername", ApplicationCommandOptionType.String, "Player to remove", isRequired: false));
+                            enabledSubcommandCount++;
+                        }
+
+                        if (enabledSubcommandCount > 0)
+                        {
+                            commandList.Add(baseCommand);
+                        }
+                    }
+                    else
+                    {
+                        log.Error("Client or CurrentUser is null during slash command synchronization.");
+                        return;
+                    }
+                }
+
+                try
+                {
+                    foreach (SlashCommandBuilder command in commandList)
+                    {
+                        applicationCommandProperties.Add(command.Build());
+                    }
+
+                    await client.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
+
+                    _lastRegisteredCommandSignature = registrationSignature;
+
+                    log.Info("Discord slash commands registered successfully.");
+                }
+                catch (Discord.Net.RateLimitedException ex)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "slash command synchronization");
+                }
+                catch (Discord.Net.HttpException ex) when (ex.HttpCode == HttpStatusCode.TooManyRequests)
+                {
+                    await HandleDiscordRateLimitAsync(ex, "slash command synchronization");
+                }
+                catch (Exception exception)
+                {
+                    log.Error("Error registering Discord slash commands: " + exception.Message);
+                }
             }
             catch (Exception exception)
             {
-                log.Error("Error registering Discord slash commands: " + exception.Message);
+                log.Error("Error synchronizing Discord slash commands: " + exception.Message);
             }
+            finally
+            {
+                _commandRegistrationLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Creates a compact signature of every setting that affects slash command registration.
+        /// </summary>
+        private string GetSlashCommandRegistrationSignature()
+        {
+            string botName = string.Empty;
+
+            if (!settings.MainSettings.RemoveBotName && client?.CurrentUser != null)
+            {
+                botName = Regex.Replace(client.CurrentUser.Username.ToLower(), "[^a-zA-Z0-9]", string.Empty);
+            }
+
+            return string.Join("|", new[]
+            {
+                settings.MainSettings.RemoveBotName ? "standalone" : "grouped",
+                botName,
+                settings.CommandSettings.EnableInfo ? "1" : "0",
+                settings.CommandSettings.EnableStartServer ? "1" : "0",
+                settings.CommandSettings.EnableStopServer ? "1" : "0",
+                settings.CommandSettings.EnableRestartServer ? "1" : "0",
+                settings.CommandSettings.EnableKillServer ? "1" : "0",
+                settings.CommandSettings.EnableUpdateServer ? "1" : "0",
+                settings.CommandSettings.EnableShowPlaytime ? "1" : "0",
+                settings.CommandSettings.EnableConsole ? "1" : "0",
+                settings.CommandSettings.EnableFullPlaytimeList ? "1" : "0",
+                settings.CommandSettings.EnableTakeBackup ? "1" : "0",
+                settings.CommandSettings.EnableRemovePlaytime ? "1" : "0"
+            });
         }
 
         /// <summary>

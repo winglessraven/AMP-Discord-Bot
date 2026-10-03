@@ -255,6 +255,14 @@ namespace DiscordBotPlugin
             }
 
             config.Save(settings);
+
+            // Re-sync slash commands after settings changes. SyncSlashCommandsAsync compares the
+            // effective command-registration signature first, so unrelated setting changes do not
+            // result in a Discord API call.
+            if (settings.MainSettings.BotActive && bot.client?.ConnectionState == ConnectionState.Connected)
+            {
+                _ = bot.SyncSlashCommandsAsync();
+            }
         }
 
         /// <summary>
