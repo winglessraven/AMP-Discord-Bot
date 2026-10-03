@@ -150,7 +150,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Console to Discord Batch Timer|How long to wait between output batches (to reduce likelyhood of being rate limited)|
 |Console Discord Channel|Discord channel name to send console output to (if enabled)|
 |Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
-|Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled)|
+|Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled). May be in any Discord server the bot is in|
 |Whitelist Approval Role|Discord role that is allowed to approve whitelist requests|
 |Custom Whitelist Command|Console command on approval. Use `{player}` where the ID belongs (e.g. `whitelist {player} true`); otherwise the ID is appended (e.g. `addsteamid`). No leading `/` needed. Blank defaults to `whitelist add`|
 |Whitelist Player ID Type|`Username` (default) or `SteamID`. Controls the modal prompt and validates Steam64 IDs when set to `SteamID`|
@@ -169,7 +169,7 @@ The `Discord Bot Game Specific` section is for game specific settings. These wil
 
 ## Whitelist Request Process
 Enable *Display Whitelist Request Button*
-Set Whitelist Request Channel (the channel to send whitelist requests to for approval)
+Set Whitelist Request Channel (the channel to send whitelist requests to for approval; can be in a different Discord server than the info panel, as long as the bot is in both)
 Set the Whitelist Approval Role (roles that can approve whitelist requests)
 Set *Custom Whitelist Command* for your game (no leading `/` — AMP adds it). Use `{player}` when the ID is not at the end; otherwise the ID is appended:
 - Minecraft: `whitelist add` (also the blank default)

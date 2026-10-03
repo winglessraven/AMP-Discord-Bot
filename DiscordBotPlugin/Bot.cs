@@ -1954,6 +1954,40 @@ namespace DiscordBotPlugin
             await modal.RespondAsync($"Whitelist request submitted for **{playerId}**!", ephemeral: true);
         }
 
+        /// <summary>
+        /// Finds a text channel by ID or name in any guild the bot is connected to.
+        /// </summary>
+        public SocketTextChannel? GetTextChannelByNameOrId(string channelNameOrId)
+        {
+            if (client == null || string.IsNullOrWhiteSpace(channelNameOrId))
+            {
+                return null;
+            }
+
+            bool hasId = ulong.TryParse(channelNameOrId.Trim(), out ulong channelId);
+            foreach (var guild in client.Guilds.ToList())
+            {
+                SocketTextChannel? channel = null;
+                if (hasId)
+                {
+                    channel = guild.GetTextChannel(channelId);
+                }
+
+                if (channel == null)
+                {
+                    channel = guild.TextChannels
+                        .FirstOrDefault(c => string.Equals(c.Name, channelNameOrId, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (channel != null)
+                {
+                    return channel;
+                }
+            }
+
+            return null;
+        }
+
         public async Task WhitelistRequest(SocketModal modal, string playerId, Helpers.WhitelistProfile? profile = null)
         {
             profile ??= helper.GetWhitelistProfile();
@@ -1965,7 +1999,6 @@ namespace DiscordBotPlugin
                 return;
             }
 
-            var guild = client.GetGuild(modal.GuildId.Value);
             var channelRef = settings.MainSettings.WhitelistRequestChannel;
 
             if (string.IsNullOrWhiteSpace(channelRef))
@@ -1974,24 +2007,11 @@ namespace DiscordBotPlugin
                 return;
             }
 
-            SocketTextChannel? channel = null;
-
-            // Check if whitelist request channel is an ID
-            if (ulong.TryParse(channelRef, out ulong channelId))
-            {
-                channel = guild.GetTextChannel(channelId);
-            }
-
-            // If not found or not numeric, try by name
-            if (channel == null)
-            {
-                channel = guild.TextChannels
-                    .FirstOrDefault(c => string.Equals(c.Name, channelRef, StringComparison.OrdinalIgnoreCase));
-            }
+            SocketTextChannel? channel = GetTextChannelByNameOrId(channelRef);
 
             if (channel == null)
             {
-                log.Error($"Could not find WhitelistRequestChannel '{channelRef}' in guild {guild.Id}");
+                log.Error($"Could not find WhitelistRequestChannel '{channelRef}' in any connected guild.");
                 return;
             }
 

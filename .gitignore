@@ -340,3 +340,6 @@ ASALocalRun/
 healthchecksdb
 #/DiscordBotPlugin/DiscordBotPlugin.csproj
 /DiscordBotPlugin/DiscordBotPlugin.csproj
+
+# Cursor local agent files
+.cursor/
