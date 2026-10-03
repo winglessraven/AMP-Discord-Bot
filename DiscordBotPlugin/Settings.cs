@@ -155,6 +155,9 @@ namespace DiscordBotPlugin
             [WebSetting("Whitelist Approval Role", "Discord role that is allowed to approve whitelist requests", false, Subcategory: "Logging:output:4")]
             public string WhitelistApprovalRole = "";
 
+            [WebSetting("Whitelist Auto Approve Role (Name OR ID)", "Requests submitted by members of this Discord role are approved automatically. Leave blank to disable auto approval.", false, Subcategory: "Logging:output:4")]
+            public string WhitelistAutoApproveRole = "";
+
             [WebSetting("Custom Whitelist Command", "Console command to run on approval. Use `{player}` where the ID belongs (e.g. `whitelist {player} true`); if omitted, the ID is appended (e.g. `addsteamid`). Do not include a leading `/` — AMP handles that. Blank defaults to `whitelist add`.", false, Subcategory: "Logging:output:4")]
             public string CustomWhitelistCommand = "";
 

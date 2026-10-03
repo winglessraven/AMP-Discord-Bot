@@ -1949,9 +1949,17 @@ namespace DiscordBotPlugin
                 return;
             }
 
-            await WhitelistRequest(modal, playerId, profile);
+            // Acknowledge the modal before performing Discord/API work so auto approval cannot
+            // cause the interaction to time out while the request message is posted and updated.
+            await modal.DeferAsync(ephemeral: true);
 
-            await modal.RespondAsync($"Whitelist request submitted for **{playerId}**!", ephemeral: true);
+            bool autoApproved = await WhitelistRequest(modal, playerId, profile);
+
+            await modal.FollowupAsync(
+                autoApproved
+                    ? $"Whitelist request for **{playerId}** was **auto approved**!"
+                    : $"Whitelist request submitted for **{playerId}**!",
+                ephemeral: true);
         }
 
         /// <summary>
@@ -1988,7 +1996,7 @@ namespace DiscordBotPlugin
             return null;
         }
 
-        public async Task WhitelistRequest(SocketModal modal, string playerId, Helpers.WhitelistProfile? profile = null)
+        public async Task<bool> WhitelistRequest(SocketModal modal, string playerId, Helpers.WhitelistProfile? profile = null)
         {
             profile ??= helper.GetWhitelistProfile();
 
@@ -1996,7 +2004,7 @@ namespace DiscordBotPlugin
             if (settings.MainSettings.WhitelistRequestChannel == "")
             {
                 log.Error("WhitelistRequestChannel is not configured.");
-                return;
+                return false;
             }
 
             var channelRef = settings.MainSettings.WhitelistRequestChannel;
@@ -2004,7 +2012,7 @@ namespace DiscordBotPlugin
             if (string.IsNullOrWhiteSpace(channelRef))
             {
                 log.Error("WhitelistRequestChannel not configured.");
-                return;
+                return false;
             }
 
             SocketTextChannel? channel = GetTextChannelByNameOrId(channelRef);
@@ -2012,7 +2020,7 @@ namespace DiscordBotPlugin
             if (channel == null)
             {
                 log.Error($"Could not find WhitelistRequestChannel '{channelRef}' in any connected guild.");
-                return;
+                return false;
             }
 
             var serverName = settings.MainSettings.ServerDisplayName;
@@ -2038,9 +2046,75 @@ namespace DiscordBotPlugin
                 .Build();
 
             // Post to the request channel
-            await channel.SendMessageAsync(embed: embed, components: components);
+            var requestMessage = await channel.SendMessageAsync(embed: embed, components: components);
 
             log.Info($"Whitelist request created for {modal.User.Username} ({playerId}) on server {serverName}.");
+
+            // Auto approval is optional. The request message is deliberately created first so
+            // there is still a normal audit entry in the whitelist request channel.
+            string autoApproveRoleRef = settings.MainSettings.WhitelistAutoApproveRole?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(autoApproveRoleRef) || modal.User is not SocketGuildUser requesterGuildUser)
+            {
+                return false;
+            }
+
+            SocketRole? autoApproveRole = null;
+            if (ulong.TryParse(autoApproveRoleRef, out ulong autoApproveRoleId))
+            {
+                autoApproveRole = requesterGuildUser.Guild.GetRole(autoApproveRoleId);
+            }
+
+            // Fall back to an exact role-name match if the value is not an ID, or if a
+            // numeric-looking role name was supplied and no role exists with that ID.
+            if (autoApproveRole == null)
+            {
+                autoApproveRole = requesterGuildUser.Guild.Roles
+                    .FirstOrDefault(r => string.Equals(r.Name, autoApproveRoleRef, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (autoApproveRole == null)
+            {
+                log.Warning($"Whitelist auto approve role '{autoApproveRoleRef}' was not found in guild '{requesterGuildUser.Guild.Name}'.");
+                return false;
+            }
+
+            if (!requesterGuildUser.Roles.Any(r => r.Id == autoApproveRole.Id))
+            {
+                return false;
+            }
+
+            string command = helper.GetWhitelistConsoleCommand(playerId);
+            IHasWriteableConsole writeableConsole = application as IHasWriteableConsole;
+            writeableConsole?.WriteLine(command);
+
+            var autoApprovedEmbed = new EmbedBuilder()
+                .WithTitle(profile.RequestTitle)
+                .WithColor(Color.Green)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .AddField("Discord User", modal.User.Mention, true)
+                .AddField(profile.PlayerIdLabel, playerId, true)
+                .AddField("Server", serverName, true)
+                .AddField("Status", "✔️ Auto approved", true)
+                .Build();
+
+            await requestMessage.ModifyAsync(msg =>
+            {
+                msg.Embed = autoApprovedEmbed;
+                msg.Components = new ComponentBuilder().Build();
+            });
+
+            try
+            {
+                await modal.User.SendMessageAsync(
+                    $"✅ Your whitelist request for **{playerId}** on **{serverName}** has been **auto approved**!");
+            }
+            catch
+            {
+                log.Warning($"Could not DM auto-approved whitelist result to {modal.User.Username}.");
+            }
+
+            log.Info($"Whitelist auto approved: {playerId} for {modal.User.Username} via role {autoApproveRole.Name} ({autoApproveRole.Id}).");
+            return true;
         }
     }
 }
