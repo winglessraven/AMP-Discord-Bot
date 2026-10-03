@@ -152,6 +152,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Exclude Console Output|Text to exclude from console output, useful for removing spammy messages. Use * for wildcard, e.g. \*message to ignore\*|
 |Whitelist Request Channel|Discord channel name (or ID) to send whitelist requests to (if enabled). May be in any Discord server the bot is in|
 |Whitelist Approval Role|Discord role that is allowed to approve whitelist requests|
+|Whitelist Auto Approve Role (Name OR ID) | Discord role name or ID whose members should have whitelist requests automatically approved. Leave blank to disable auto approval.|
 |Custom Whitelist Command|Console command on approval. Use `{player}` where the ID belongs (e.g. `whitelist {player} true`); otherwise the ID is appended (e.g. `addsteamid`). No leading `/` needed. Blank defaults to `whitelist add`|
 |Whitelist Player ID Type|`Username` (default) or `SteamID`. Controls the modal prompt and validates Steam64 IDs when set to `SteamID`|
 |Enable Web Panel|Enable the web panel. This will create a html file in a similar format to the Discord info panel for website embeds. Additional steps are required to map the html file to make it accessible. See the [Wiki](https://github.com/winglessraven/AMP-Discord-Bot/wiki/Configure-the-Web-Panel)|
@@ -171,6 +172,7 @@ The `Discord Bot Game Specific` section is for game specific settings. These wil
 Enable *Display Whitelist Request Button*
 Set Whitelist Request Channel (the channel to send whitelist requests to for approval; can be in a different Discord server than the info panel, as long as the bot is in both)
 Set the Whitelist Approval Role (roles that can approve whitelist requests)
+Optionally set the Whitelist Auto Approve Role (Name OR ID). Requests from users with this role will still create an approval request, but will be automatically approved and marked as **Auto approved**.
 Set *Custom Whitelist Command* for your game (no leading `/` — AMP adds it). Use `{player}` when the ID is not at the end; otherwise the ID is appended:
 - Minecraft: `whitelist add` (also the blank default)
 - Project Zomboid: `addsteamid`
