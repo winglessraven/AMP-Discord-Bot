@@ -34,6 +34,9 @@ namespace DiscordBotPlugin
             [WebSetting("Game Image URL", "Displayed in bot info panel, needs to be a publicly accessible image URL", false, Subcategory: "Server Info:page_info:2")]
             public string GameImageURL = "";
 
+            [WebSetting("Info Panel Image File", "Optional local image file to display at the bottom of the Discord info panel. Relative paths are resolved from the application folder. Supported formats: PNG, JPG/JPEG, GIF and WEBP.", false, Subcategory: "Server Info:page_info:2")]
+            public string InfoPanelImageFile = "";
+
             [WebSetting("Valid Player Count?", "If the player count reports correctly, for info panel and bot status", false, Subcategory: "Server Info:page_info:2")]
             public bool ValidPlayerCount = false;
 

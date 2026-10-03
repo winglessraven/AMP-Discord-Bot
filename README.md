@@ -118,6 +118,7 @@ Before the plugin can be used you need to configure AMP in a specific way.  **NO
 |Server Password|If you have a server password that you want your users to see enter it here|
 |Modpack URL|This will show as a link in the info panel, useful if you are running a modpack or have a steam workshop collection for the server mods being used|
 |Game Image URL|A publicly accessible image to be shown in the info panel|
+|Info Panel Image File|Optional local PNG/JPG/JPEG/GIF/WEBP file to show as the large image in the Discord info panel. Relative paths are resolved from the application folder. The file is only re-uploaded to Discord when it changes|
 |Valid Player Count|Set to true if the server has a valid player count, this will determine if the online count is shown in Discord|
 |Bot Activated|If the bot should be activated|
 |Bot Refresh Interval|How often, in seconds, the bot should update the presence and info message. Recommended minimum 30 seconds otherwise requests to Discord could be throttled|

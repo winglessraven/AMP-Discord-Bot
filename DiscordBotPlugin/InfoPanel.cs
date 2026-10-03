@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using ModuleShared;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -23,6 +24,47 @@ namespace DiscordBotPlugin
         private readonly IConfigSerializer config;
         private Bot bot;
         private readonly Commands commands;
+        private readonly ConcurrentDictionary<ulong, string> infoPanelImageVersions = new ConcurrentDictionary<ulong, string>();
+        private readonly ConcurrentDictionary<string, byte> infoPanelImageWarningKeys = new ConcurrentDictionary<string, byte>();
+
+        private const string InfoPanelAttachmentBaseName = "info-panel-image";
+        private static readonly HashSet<string> SupportedInfoPanelImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp"
+        };
+
+        private sealed class InfoPanelImageMetadata
+        {
+            public string FilePath { get; set; }
+            public string FileName { get; set; }
+            public string Version { get; set; }
+            public long Length { get; set; }
+        }
+
+        private sealed class InfoPanelImageSnapshot : IDisposable
+        {
+            public InfoPanelImageSnapshot(MemoryStream stream, string fileName, string version, long length)
+            {
+                Stream = stream;
+                FileName = fileName;
+                Version = version;
+                Length = length;
+            }
+
+            public MemoryStream Stream { get; }
+            public string FileName { get; }
+            public string Version { get; }
+            public long Length { get; }
+
+            public void Dispose()
+            {
+                Stream?.Dispose();
+            }
+        }
 
         public InfoPanel(IApplicationWrapper application, Settings settings, Helpers helper, IAMPInstanceInfo aMPInstanceInfo, ILogger log, IConfigSerializer config, Bot bot, Commands commands)
         {
@@ -176,6 +218,8 @@ namespace DiscordBotPlugin
             // Keep the info panel "last updated" time visible.
             embed.WithCurrentTimestamp();
 
+            InfoPanelImageMetadata infoPanelImage = GetInfoPanelImageMetadata();
+
             var builder = new ComponentBuilder();
 
             if (settings?.MainSettings?.ShowStartButton == true)
@@ -291,19 +335,22 @@ namespace DiscordBotPlugin
                             continue;
                         }
 
-                        await textChannel.ModifyMessageAsync(messageId, message =>
-                        {
-                            message.Embed = embed.Build();
-
-                            if (!isButtonless)
+                        await ModifyInfoPanelMessageAsync(
+                            textChannel,
+                            messageId,
+                            embed,
+                            infoPanelImage,
+                            message =>
                             {
-                                message.Components = builder.Build();
-                            }
-                            else if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
-                            {
-                                message.Components = buttonlessWhitelist.Build();
-                            }
-                        });
+                                if (!isButtonless)
+                                {
+                                    message.Components = builder.Build();
+                                }
+                                else if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+                                {
+                                    message.Components = buttonlessWhitelist.Build();
+                                }
+                            });
                     }
                     catch (Discord.Net.HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
                     {
@@ -355,24 +402,31 @@ namespace DiscordBotPlugin
 
                 try
                 {
-                    if (Buttonless)
+                    var textChannel = bot.client.GetGuild(guild).GetTextChannel(channelID);
+                    MessageComponent components = null;
+
+                    if (!Buttonless)
                     {
-                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build());
-                        log.Debug("Message ID: " + message.Id.ToString());
-                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                        if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+                        {
+                            components = buttonlessWhitelist.Build();
+                        }
+                        else
+                        {
+                            components = builder.Build();
+                        }
                     }
-                    else if (settings?.MainSettings?.ShowWhitelistButton == true && settings?.MainSettings?.ShowWhitelistButtonOnButtonlessPanel == true)
+
+                    var sendResult = await SendInfoPanelMessageAsync(textChannel, embed, components, infoPanelImage);
+                    var message = sendResult.Message;
+
+                    if (!string.IsNullOrEmpty(sendResult.ImageVersion))
                     {
-                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: buttonlessWhitelist.Build());
-                        log.Debug("Message ID: " + message.Id.ToString());
-                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
+                        infoPanelImageVersions[message.Id] = sendResult.ImageVersion;
                     }
-                    else
-                    {
-                        var message = await bot.client.GetGuild(guild).GetTextChannel(channelID).SendMessageAsync(embed: embed.Build(), components: builder.Build());
-                        log.Debug("Message ID: " + message.Id.ToString());
-                        settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
-                    }
+
+                    log.Debug("Message ID: " + message.Id.ToString());
+                    settings.MainSettings.InfoMessageDetails.Add(guild.ToString() + "-" + channelID.ToString() + "-" + message.Id.ToString() + "-" + Buttonless);
 
                     config.Save(settings);
                 }
@@ -388,6 +442,284 @@ namespace DiscordBotPlugin
                 {
                     log.Error($"Error creating info panel message: {ex.Message}");
                 }
+            }
+        }
+
+        private InfoPanelImageMetadata GetInfoPanelImageMetadata()
+        {
+            string configuredPath = settings?.MainSettings?.InfoPanelImageFile;
+
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                string imagePath = configuredPath.Trim().Trim('"');
+
+                if (!Path.IsPathRooted(imagePath))
+                {
+                    imagePath = Path.Combine(application.BaseDirectory, imagePath);
+                }
+
+                imagePath = Path.GetFullPath(imagePath);
+                string extension = Path.GetExtension(imagePath);
+
+                if (!SupportedInfoPanelImageExtensions.Contains(extension))
+                {
+                    LogInfoPanelImageWarningOnce(
+                        "unsupported:" + imagePath,
+                        $"Info panel image '{imagePath}' has an unsupported file type. Supported formats: PNG, JPG/JPEG, GIF and WEBP.");
+                    return null;
+                }
+
+                var fileInfo = new FileInfo(imagePath);
+                fileInfo.Refresh();
+
+                if (!fileInfo.Exists)
+                {
+                    LogInfoPanelImageWarningOnce(
+                        "missing:" + imagePath,
+                        $"Info panel image file was not found: {imagePath}");
+                    return null;
+                }
+
+                if (fileInfo.Length <= 0)
+                {
+                    LogInfoPanelImageWarningOnce(
+                        "empty:" + imagePath,
+                        $"Info panel image file is empty: {imagePath}");
+                    return null;
+                }
+
+                return new InfoPanelImageMetadata
+                {
+                    FilePath = imagePath,
+                    FileName = InfoPanelAttachmentBaseName + extension.ToLowerInvariant(),
+                    Version = GetInfoPanelImageVersion(fileInfo),
+                    Length = fileInfo.Length
+                };
+            }
+            catch (Exception ex)
+            {
+                LogInfoPanelImageWarningOnce(
+                    "path:" + configuredPath,
+                    $"Could not resolve info panel image file '{configuredPath}': {ex.Message}");
+                return null;
+            }
+        }
+
+        private static string GetInfoPanelImageVersion(FileInfo fileInfo)
+        {
+            return fileInfo.FullName + "|" + fileInfo.Length + "|" + fileInfo.LastWriteTimeUtc.Ticks;
+        }
+
+        private bool CanUploadInfoPanelImage(SocketGuild guild, InfoPanelImageMetadata image)
+        {
+            if (guild == null || image == null)
+            {
+                return false;
+            }
+
+            if ((ulong)image.Length <= guild.MaxUploadLimit)
+            {
+                return true;
+            }
+
+            LogInfoPanelImageWarningOnce(
+                "size:" + guild.Id + ":" + image.FilePath,
+                $"Info panel image '{image.FilePath}' is {image.Length} bytes, which exceeds the Discord upload limit of {guild.MaxUploadLimit} bytes for guild {guild.Id}.");
+            return false;
+        }
+
+        private async Task<InfoPanelImageSnapshot> CreateInfoPanelImageSnapshotAsync(InfoPanelImageMetadata image)
+        {
+            if (image == null)
+            {
+                return null;
+            }
+
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                try
+                {
+                    var before = new FileInfo(image.FilePath);
+                    before.Refresh();
+
+                    if (!before.Exists || before.Length <= 0)
+                    {
+                        return null;
+                    }
+
+                    string beforeVersion = GetInfoPanelImageVersion(before);
+                    MemoryStream memoryStream = before.Length <= int.MaxValue
+                        ? new MemoryStream((int)before.Length)
+                        : new MemoryStream();
+
+                    try
+                    {
+                        using (var fileStream = new FileStream(
+                            image.FilePath,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.ReadWrite | FileShare.Delete,
+                            81920,
+                            true))
+                        {
+                            await fileStream.CopyToAsync(memoryStream);
+                        }
+
+                        var after = new FileInfo(image.FilePath);
+                        after.Refresh();
+
+                        if (after.Exists &&
+                            after.Length == memoryStream.Length &&
+                            beforeVersion == GetInfoPanelImageVersion(after))
+                        {
+                            memoryStream.Position = 0;
+                            string extension = Path.GetExtension(after.FullName).ToLowerInvariant();
+
+                            return new InfoPanelImageSnapshot(
+                                memoryStream,
+                                InfoPanelAttachmentBaseName + extension,
+                                GetInfoPanelImageVersion(after),
+                                after.Length);
+                        }
+                    }
+                    catch
+                    {
+                        memoryStream.Dispose();
+                        throw;
+                    }
+
+                    memoryStream.Dispose();
+                }
+                catch (IOException) when (attempt == 0)
+                {
+                    await Task.Delay(100);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    LogInfoPanelImageWarningOnce(
+                        "access:" + image.FilePath,
+                        $"Could not read info panel image file '{image.FilePath}': {ex.Message}");
+                    return null;
+                }
+                catch (Exception ex)
+                {
+                    LogInfoPanelImageWarningOnce(
+                        "read:" + image.FilePath,
+                        $"Could not read info panel image file '{image.FilePath}': {ex.Message}");
+                    return null;
+                }
+            }
+
+            LogInfoPanelImageWarningOnce(
+                "changing:" + image.FilePath,
+                $"Info panel image file changed while it was being read. It will be retried on the next refresh: {image.FilePath}");
+            return null;
+        }
+
+        private async Task<(IUserMessage Message, string ImageVersion)> SendInfoPanelMessageAsync(
+            SocketTextChannel textChannel,
+            EmbedBuilder embed,
+            MessageComponent components,
+            InfoPanelImageMetadata image)
+        {
+            if (textChannel == null)
+            {
+                throw new InvalidOperationException("Cannot create info panel because the target text channel could not be found.");
+            }
+
+            if (CanUploadInfoPanelImage(textChannel.Guild, image))
+            {
+                using (var snapshot = await CreateInfoPanelImageSnapshotAsync(image))
+                {
+                    if (snapshot != null && (ulong)snapshot.Length <= textChannel.Guild.MaxUploadLimit)
+                    {
+                        embed.ImageUrl = "attachment://" + snapshot.FileName;
+
+                        using (var attachment = new FileAttachment(snapshot.Stream, snapshot.FileName))
+                        {
+                            var message = await textChannel.SendFileAsync(
+                                attachment,
+                                embed: embed.Build(),
+                                components: components);
+
+                            return (message, snapshot.Version);
+                        }
+                    }
+                }
+            }
+
+            embed.ImageUrl = null;
+            var fallbackMessage = await textChannel.SendMessageAsync(embed: embed.Build(), components: components);
+            return (fallbackMessage, null);
+        }
+
+        private async Task ModifyInfoPanelMessageAsync(
+            SocketTextChannel textChannel,
+            ulong messageId,
+            EmbedBuilder embed,
+            InfoPanelImageMetadata image,
+            Action<MessageProperties> configureMessage)
+        {
+            bool canUseImage = CanUploadInfoPanelImage(textChannel?.Guild, image);
+            bool needsImageUpload = canUseImage &&
+                (!infoPanelImageVersions.TryGetValue(messageId, out string uploadedVersion) || uploadedVersion != image.Version);
+
+            if (needsImageUpload)
+            {
+                using (var snapshot = await CreateInfoPanelImageSnapshotAsync(image))
+                {
+                    if (snapshot != null && (ulong)snapshot.Length <= textChannel.Guild.MaxUploadLimit)
+                    {
+                        embed.ImageUrl = "attachment://" + snapshot.FileName;
+
+                        using (var attachment = new FileAttachment(snapshot.Stream, snapshot.FileName))
+                        {
+                            await textChannel.ModifyMessageAsync(messageId, message =>
+                            {
+                                message.Embed = embed.Build();
+                                message.Attachments = new[] { attachment };
+                                configureMessage?.Invoke(message);
+                            });
+                        }
+
+                        infoPanelImageVersions[messageId] = snapshot.Version;
+                        return;
+                    }
+
+                    canUseImage = false;
+                }
+            }
+
+            embed.ImageUrl = canUseImage ? "attachment://" + image.FileName : null;
+
+            await textChannel.ModifyMessageAsync(messageId, message =>
+            {
+                message.Embed = embed.Build();
+
+                if (!canUseImage)
+                {
+                    message.Attachments = Array.Empty<FileAttachment>();
+                }
+
+                configureMessage?.Invoke(message);
+            });
+
+            if (!canUseImage)
+            {
+                infoPanelImageVersions.TryRemove(messageId, out _);
+            }
+        }
+
+        private void LogInfoPanelImageWarningOnce(string key, string message)
+        {
+            if (infoPanelImageWarningKeys.TryAdd(key, 0))
+            {
+                log.Warning(message);
             }
         }
 
