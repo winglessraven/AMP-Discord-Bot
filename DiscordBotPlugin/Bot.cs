@@ -247,9 +247,29 @@ namespace DiscordBotPlugin
                     ? helper.OnlineBotPresenceString(onlinePlayers, maximumPlayers)
                     : application.State.ToString();
 
-                if (!string.Equals(currentActivity, desiredActivity, StringComparison.Ordinal))
+                // Compare both text and activity type so changing the AMP dropdown
+                // takes effect on the next refresh even if the text is unchanged.
+                ActivityType desiredActivityType = settings.MainSettings.BotPresenceType switch
                 {
-                    await client.SetActivityAsync(new CustomStatusGame(desiredActivity));
+                    BotPresenceType.Playing => ActivityType.Playing,
+                    BotPresenceType.Watching => ActivityType.Watching,
+                    BotPresenceType.Listening => ActivityType.Listening,
+                    BotPresenceType.Competing => ActivityType.Competing,
+                    _ => ActivityType.CustomStatus
+                };
+
+                if (client.Activity?.Type != desiredActivityType ||
+                    !string.Equals(currentActivity, desiredActivity, StringComparison.Ordinal))
+                {
+                    if (desiredActivityType == ActivityType.CustomStatus)
+                    {
+                        // Preserve the original presence implementation for existing installations.
+                        await client.SetActivityAsync(new CustomStatusGame(desiredActivity));
+                    }
+                    else
+                    {
+                        await client.SetGameAsync(desiredActivity, null, desiredActivityType);
+                    }
                 }
             }
             catch (Discord.Net.RateLimitedException ex)

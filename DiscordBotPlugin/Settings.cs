@@ -108,6 +108,9 @@ namespace DiscordBotPlugin
             [WebSetting("Display Online Player List", "Display online player list in the info panel - if not compatible with the server nothing will show", false, Subcategory: "Server Info:page_info:2")]
             public bool ShowOnlinePlayers = false;
 
+            [WebSetting("Bot Presence Type", "Discord activity type used for the bot's status. Custom Status preserves the existing behaviour; Playing, Watching, Listening and Competing expose a regular activity (including player counts) to integrations such as Discord server widgets.", false, Subcategory: "Misc:more_vert:7")]
+            public BotPresenceType BotPresenceType = BotPresenceType.CustomStatus;
+
             [WebSetting("Online Server Bot Presence Text", "Change the presence text when application is running, use {OnlinePlayers} and {MaximumPlayers} as variables. Custom variables can also be used - to do this create a 'BotVariables.json' file in the instance folder. Variable name is the key, result is the value, e.g. {test} would read '\"test\": \"result\"'", false, Subcategory: "Misc:more_vert:7")]
             public string OnlineBotPresence = "";
 
@@ -287,6 +290,19 @@ namespace DiscordBotPlugin
         }
 
         public DiscordBotCommandOptions CommandSettings = new DiscordBotCommandOptions();
+    }
+
+    /// <summary>
+    /// Discord activity type to display for the bot presence.
+    /// </summary>
+    public enum BotPresenceType
+    {
+        [Description("Custom Status")]
+        CustomStatus = 0,
+        Playing,
+        Watching,
+        Listening,
+        Competing
     }
 
     /// <summary>
